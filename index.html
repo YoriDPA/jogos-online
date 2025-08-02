@@ -158,6 +158,7 @@
         .powerup-message.bonus { color: #ffcc00; }
         .powerup-message.speedup { color: #ff5555; }
         .powerup-message.slowdown { color: #55aaff; }
+        .powerup-message.levelup { color: #ffffff; } /* Novo: Para mensagem de velocidade por 100 comidinhas */
         @keyframes fadeOut {
             0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
             80% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
@@ -445,7 +446,7 @@
         const gridSize = 20;
         let snake, food, powerUp, direction, score, speed, gameInterval, changingDirection;
         let isPaused = false;
-        let foodEatenCount; // Nova variável para contar apenas comidinhas comidas
+        let foodEatenCount; // Contador de comidinhas
         
         let powerUpTimer = null;
         const POWERUP_LIFESPAN = 7000;
@@ -585,7 +586,9 @@
 
         function drawPowerUp() {
             if (!powerUp) return;
-            const size = gridSize * 0.8;
+            const baseSize = gridSize * 0.8;
+            const pulse = Math.sin(Date.now() / 500) * 0.1 + 1; // Pulsação sutil no tamanho
+            const size = baseSize * pulse;
             let label = '';
             switch (powerUp.type) {
                 case 'bonus': gameCtx.fillStyle = '#ffcc00'; label = '+5'; break;
@@ -597,13 +600,20 @@
             if (timeSinceSpawn > POWERUP_LIFESPAN - 3000) {
                 opacity = (Math.sin(Date.now() / 150) + 1) / 2;
             }
+            const cx = powerUp.x * gridSize + gridSize / 2;
+            const cy = powerUp.y * gridSize + gridSize / 2;
+            gameCtx.save();
+            gameCtx.translate(cx, cy);
+            gameCtx.rotate((Date.now() / 1000) % (2 * Math.PI)); // Rotação suave
+            gameCtx.translate(-cx, -cy);
             drawStar(powerUp.x, powerUp.y, size, opacity);
+            gameCtx.restore();
             gameCtx.globalAlpha = opacity;
             gameCtx.fillStyle = '#000';
             gameCtx.font = 'bold 10px Arial';
             gameCtx.textAlign = 'center';
             gameCtx.textBaseline = 'middle';
-            gameCtx.fillText(label, powerUp.x * gridSize + gridSize / 2, powerUp.y * gridSize + gridSize / 2);
+            gameCtx.fillText(label, cx, cy); // Label centralizado
             gameCtx.globalAlpha = 1;
         }
 
@@ -614,6 +624,7 @@
                 case 'bonus': powerUpMessage.textContent = 'Bônus: +5 Pontos!'; powerUpMessage.classList.add('bonus'); break;
                 case 'speedup': powerUpMessage.textContent = 'Velocidade Aumentada!'; powerUpMessage.classList.add('speedup'); break;
                 case 'slowdown': powerUpMessage.textContent = 'Velocidade Reduzida!'; powerUpMessage.classList.add('slowdown'); break;
+                case 'levelup': powerUpMessage.textContent = 'Velocidade Máxima Aumentada!'; powerUpMessage.classList.add('levelup'); break; // Novo tipo para 100 comidinhas
             }
             setTimeout(() => powerUpMessage.classList.add('hidden'), 3000);
         }
@@ -629,7 +640,7 @@
             speed = 150;
             changingDirection = false;
             isPaused = false;
-            foodEatenCount = 0; // Inicializa o contador de comidinhas
+            foodEatenCount = 0;
             scoreDisplay.textContent = score;
             updateHighScoreDisplays();
             startMovementButton.classList.remove('hidden');
@@ -729,13 +740,14 @@
                 ateSomething = true;
                 score += 1;
                 playSound('eat');
-                foodEatenCount += 1; // Incrementa apenas para comidinhas
+                foodEatenCount += 1;
                 placeFood();
-                // Verifica se atingiu múltiplo de 100 comidinhas para aumentar velocidade
+                // Verifica múltiplo de 100 para aumentar velocidade
                 if (foodEatenCount % 100 === 0) {
-                    speed = Math.max(50, speed - 10); // Aumenta velocidade (diminui intervalo em 10ms)
+                    speed = Math.max(50, speed - 10);
                     clearInterval(gameInterval);
                     gameInterval = setInterval(gameLoop, speed);
+                    showPowerUpMessage('levelup'); // Mensagem visual para o nível up
                 }
             }
             if (powerUp && head.x === powerUp.x && head.y === powerUp.y) {
@@ -750,8 +762,6 @@
                 powerUp = null;
             }
             if (ateSomething) {
-                // Removido o if redundante original para correção sutil
-                // Ajuste de speed por comida individual (se desejar manter, adicione aqui: speed = Math.max(50, speed - 2);)
                 scoreDisplay.textContent = score;
                 scoreDisplay.classList.add('update');
                 setTimeout(() => scoreDisplay.classList.remove('update'), 300);
