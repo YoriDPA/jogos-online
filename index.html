@@ -522,7 +522,7 @@
                 if (!lastTime) lastTime = time;
                 const deltaTime = time - lastTime;
                 lastTime = time;
-                dropCounter += deltaTime * (isSoftDrop ? 10 : 1); // Acelera 10x no soft drop
+                dropCounter += deltaTime * (isSoftDrop ? 15 : 1); // Acelera 15x no soft drop (aumentado de 10x para mais velocidade)
                 if (dropCounter > dropInterval) {
                     playerDrop();
                     dropCounter -= dropInterval; // Acumula para suavidade
