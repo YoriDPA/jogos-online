@@ -156,9 +156,9 @@
             z-index: 9;
         }
         .powerup-message.bonus { color: #ffcc00; }
-        .powerup-message.speedup { color: #ff5555; }
-        .powerup-message.slowdown { color: #55aaff; }
-        .powerup-message.levelup { color: #ffffff; } /* Novo: Para mensagem de velocidade por 100 comidinhas */
+        .powerup-message.speedchange { color: #ffff00; }
+        .powerup-message.levelup { color: #ffffff; }
+        .powerup-message.hunger { color: #ff0000; } /* Novo: Para alerta de fome */
         @keyframes fadeOut {
             0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
             80% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
@@ -432,6 +432,7 @@
                         synth.triggerAttackRelease("E3", "8n", now + 0.1);
                         synth.triggerAttackRelease("C3", "8n", now + 0.2);
                         break;
+                    case 'hunger': synth.triggerAttackRelease("C3", "8n", now); break; // Som novo para fome
                 }
             } catch (e) { console.error("Erro ao tocar som com Tone.js:", e); }
         }
@@ -447,6 +448,9 @@
         let snake, food, powerUp, direction, score, speed, gameInterval, changingDirection;
         let isPaused = false;
         let foodEatenCount; // Contador de comidinhas
+        let lastFoodTime; // Tempo da última comidinha comida
+        let hungerTimer; // Timer para verificar fome
+        const HUNGER_TIMEOUT = 30000; // 30 segundos sem comida para começar a encolher
         
         let powerUpTimer = null;
         const POWERUP_LIFESPAN = 7000;
@@ -589,11 +593,10 @@
             const baseSize = gridSize * 0.8;
             const pulse = Math.sin(Date.now() / 500) * 0.1 + 1; // Pulsação sutil no tamanho
             const size = baseSize * pulse;
-            let label = '';
+            let label = ''; // Removido labels específicos para mistério
             switch (powerUp.type) {
                 case 'bonus': gameCtx.fillStyle = '#ffcc00'; label = '+5'; break;
-                case 'speedup': gameCtx.fillStyle = '#ff5555'; label = '↑'; break;
-                case 'slowdown': gameCtx.fillStyle = '#55aaff'; label = '↓'; break;
+                case 'speedchange': gameCtx.fillStyle = '#ffff00'; break; // Cor neutra para speedchange, sem label
             }
             const timeSinceSpawn = Date.now() - powerUp.spawnTime;
             let opacity = 1;
@@ -608,13 +611,15 @@
             gameCtx.translate(-cx, -cy);
             drawStar(powerUp.x, powerUp.y, size, opacity);
             gameCtx.restore();
-            gameCtx.globalAlpha = opacity;
-            gameCtx.fillStyle = '#000';
-            gameCtx.font = 'bold 10px Arial';
-            gameCtx.textAlign = 'center';
-            gameCtx.textBaseline = 'middle';
-            gameCtx.fillText(label, cx, cy); // Label centralizado
-            gameCtx.globalAlpha = 1;
+            if (label) { // Apenas para bonus
+                gameCtx.globalAlpha = opacity;
+                gameCtx.fillStyle = '#000';
+                gameCtx.font = 'bold 10px Arial';
+                gameCtx.textAlign = 'center';
+                gameCtx.textBaseline = 'middle';
+                gameCtx.fillText(label, cx, cy);
+                gameCtx.globalAlpha = 1;
+            }
         }
 
         function showPowerUpMessage(type) {
@@ -622,9 +627,9 @@
             powerUpMessage.classList.remove('hidden');
             switch (type) {
                 case 'bonus': powerUpMessage.textContent = 'Bônus: +5 Pontos!'; powerUpMessage.classList.add('bonus'); break;
-                case 'speedup': powerUpMessage.textContent = 'Velocidade Aumentada!'; powerUpMessage.classList.add('speedup'); break;
-                case 'slowdown': powerUpMessage.textContent = 'Velocidade Reduzida!'; powerUpMessage.classList.add('slowdown'); break;
-                case 'levelup': powerUpMessage.textContent = 'Velocidade Máxima Aumentada!'; powerUpMessage.classList.add('levelup'); break; // Novo tipo para 100 comidinhas
+                case 'speedchange': powerUpMessage.textContent = 'Velocidade Alterada!'; powerUpMessage.classList.add('speedchange'); break; // Mensagem genérica
+                case 'levelup': powerUpMessage.textContent = 'Velocidade Máxima Aumentada!'; powerUpMessage.classList.add('levelup'); break;
+                case 'hunger': powerUpMessage.textContent = 'Fome! A cobrinha está encolhendo!'; powerUpMessage.classList.add('hunger'); break; // Novo para fome
             }
             setTimeout(() => powerUpMessage.classList.add('hidden'), 3000);
         }
@@ -641,11 +646,14 @@
             changingDirection = false;
             isPaused = false;
             foodEatenCount = 0;
+            lastFoodTime = Date.now(); // Inicializa tempo da última comida
             scoreDisplay.textContent = score;
             updateHighScoreDisplays();
             startMovementButton.classList.remove('hidden');
             if (powerUpTimer) clearInterval(powerUpTimer);
             powerUpTimer = setInterval(trySpawningPowerUp, POWERUP_SPAWN_INTERVAL);
+            if (hungerTimer) clearInterval(hungerTimer);
+            hungerTimer = setInterval(checkHunger, 1000); // Verifica fome a cada segundo
         }
 
         function placeFood() {
@@ -670,8 +678,7 @@
             const randomType = Math.random();
             let type;
             if (randomType < 0.4) type = 'bonus';
-            else if (randomType < 0.8) type = 'speedup';
-            else type = 'slowdown';
+            else type = 'speedchange'; // Fundido speedup e slowdown em speedchange com prob. 0.6
             do {
                 newPowerUp = {
                     x: Math.floor(Math.random() * numCols),
@@ -684,6 +691,20 @@
                 (food && food.x === newPowerUp.x && food.y === newPowerUp.y)
             );
             powerUp = newPowerUp;
+        }
+
+        function checkHunger() {
+            if (isPaused || !gameInterval) return;
+            const timeSinceLastFood = Date.now() - lastFoodTime;
+            if (timeSinceLastFood > HUNGER_TIMEOUT) {
+                if (snake.length > 1) {
+                    snake.pop(); // Encolhe a cobrinha
+                    playSound('hunger');
+                    showPowerUpMessage('hunger'); // Alerta visual
+                } else {
+                    stopGame(); // Game over se não puder encolher mais
+                }
+            }
         }
 
         function gameLoop() {
@@ -741,6 +762,7 @@
                 score += 1;
                 playSound('eat');
                 foodEatenCount += 1;
+                lastFoodTime = Date.now(); // Reseta o timer de fome
                 placeFood();
                 // Verifica múltiplo de 100 para aumentar velocidade
                 if (foodEatenCount % 100 === 0) {
@@ -754,8 +776,16 @@
                 ateSomething = true;
                 switch (powerUp.type) {
                     case 'bonus': score += 5; playSound('powerUp'); showPowerUpMessage('bonus'); break;
-                    case 'speedup': speed = Math.max(50, speed - 20); playSound('powerUp'); showPowerUpMessage('speedup'); break;
-                    case 'slowdown': speed = Math.min(300, speed + 20); playSound('powerUp'); showPowerUpMessage('slowdown'); break;
+                    case 'speedchange':
+                        const isIncrease = Math.random() > 0.5; // Aleatório: >0.5 aumenta, else diminui
+                        if (isIncrease) {
+                            speed = Math.max(50, speed - 20);
+                        } else {
+                            speed = Math.min(300, speed + 20);
+                        }
+                        playSound('powerUp');
+                        showPowerUpMessage('speedchange'); // Mensagem genérica
+                        break;
                 }
                 clearInterval(gameInterval);
                 gameInterval = setInterval(gameLoop, speed);
@@ -792,12 +822,14 @@
             if (isPaused) {
                 clearInterval(gameInterval);
                 clearInterval(powerUpTimer);
+                clearInterval(hungerTimer);
                 pauseScreen.classList.remove('hidden');
                 playSound('pause');
             } else {
                 pauseScreen.classList.add('hidden');
                 gameInterval = setInterval(gameLoop, speed);
                 powerUpTimer = setInterval(trySpawningPowerUp, POWERUP_SPAWN_INTERVAL);
+                hungerTimer = setInterval(checkHunger, 1000);
             }
         }
         
@@ -842,8 +874,10 @@
         function stopGame() {
             clearInterval(gameInterval);
             clearInterval(powerUpTimer);
+            clearInterval(hungerTimer);
             gameInterval = null;
             powerUpTimer = null;
+            hungerTimer = null;
             removeEventListeners();
             gameOverScreen.classList.remove('hidden');
             scoreDisplay.classList.add('hidden');
