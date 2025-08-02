@@ -9,81 +9,154 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.min.js"></script>
     <style>
         html, body {
-            margin: 0; padding: 0; width: 100%; height: 100vh;
-            overflow: hidden; background-color: #1a1a2e; color: #e0e0e0;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
             font-family: 'Russo One', sans-serif;
             touch-action: none;
         }
         #game-container {
-            width: 100vw; height: 100vh; position: relative;
-            display: flex; justify-content: center; align-items: center;
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         canvas#tetris-canvas {
-            background-color: #0f0f1a; border: 4px solid #4a4e69;
-            border-radius: 8px; box-sizing: border-box;
+            background-color: #0f0f1a;
+            border: 4px solid #4a4e69;
+            border-radius: 8px;
+            box-sizing: border-box;
+            max-width: 100vw;
+            max-height: 100vh;
         }
         .overlay {
-            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.75);
-            display: flex; justify-content: center; align-items: center; z-index: 100;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
         }
         .modal-content {
-            background: #1a1a2e; padding: 20px; border-radius: 10px;
-            border: 3px solid #fca311; text-align: center;
-            width: 90%; max-width: 500px; max-height: 90vh;
+            background: #1a1a2e;
+            padding: 20px;
+            border-radius: 10px;
+            border: 3px solid #fca311;
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+            max-height: 80vh;
             overflow-y: auto;
         }
         .modal-content h1 {
-            font-size: 2.5rem; margin-bottom: 1rem; color: #fff;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: #fff;
             text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fca311, 0 0 20px #fca311;
         }
-        .modal-content p { font-size: 1rem; margin-bottom: 1.5rem; }
-        .modal-content button {
-            background-color: #fca311; color: #1a1a2e; padding: 10px 20px;
-            border: none; border-radius: 5px; font-family: 'Russo One', sans-serif;
-            font-size: 1rem; cursor: pointer;
-            transition: background-color 0.2s; margin: 5px;
+        .modal-content p {
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
         }
-        .modal-content button:hover { background-color: #ffc300; }
-        .modal-content button:disabled { background-color: #555; cursor: not-allowed; }
+        .modal-content button {
+            background-color: #fca311;
+            color: #1a1a2e;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-family: 'Russo One', sans-serif;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin: 5px;
+        }
+        .modal-content button:hover {
+            background-color: #ffc300;
+        }
+        .modal-content button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
         #score-popup {
-            position: absolute; top: 10px; left: 50%;
+            position: absolute;
+            top: 10px;
+            left: 50%;
             transform: translateX(-50%);
             background-color: rgba(252, 163, 17, 0.85);
-            color: #1a1a2e; padding: 10px 25px; border-radius: 20px;
-            font-size: 1.2rem; z-index: 10;
-            pointer-events: none; opacity: 0;
+            color: #1a1a2e;
+            padding: 10px 25px;
+            border-radius: 20px;
+            font-size: 1.2rem;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
             transition: opacity 0.5s ease-in-out;
         }
-        #score-popup.show { opacity: 1; }
+        #score-popup.show {
+            opacity: 1;
+        }
         #dev-signature {
-            position: absolute; bottom: 10px; right: 15px;
-            font-size: 0.8rem; color: white; opacity: 0.4;
+            position: absolute;
+            bottom: 10px;
+            right: 15px;
+            font-size: 0.8rem;
+            color: white;
+            opacity: 0.4;
             pointer-events: none;
         }
         #high-scores-container {
-            margin-top: 20px; max-height: 200px; overflow-y: auto;
-            background-color: rgba(0,0,0,0.3); border-radius: 5px; padding: 10px;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: rgba(0,0,0,0.3);
+            border-radius: 5px;
+            padding: 10px;
         }
         #high-scores-list {
-            list-style: none; padding: 0; margin: 0; text-align: left;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            text-align: left;
         }
         #high-scores-list li {
-            padding: 5px 10px; border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding: 5px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
-        #high-scores-list li:last-child { border-bottom: none; }
+        #high-scores-list li:last-child {
+            border-bottom: none;
+        }
         #high-scores-list li .rank {
-            display: inline-block; width: 30px; font-weight: bold; color: #fca311;
+            display: inline-block;
+            width: 30px;
+            font-weight: bold;
+            color: #fca311;
         }
-        #high-scores-list li .name { font-weight: bold; }
-        #high-scores-list li .score { float: right; }
+        #high-scores-list li .name {
+            font-weight: bold;
+        }
+        #high-scores-list li .score {
+            float: right;
+        }
         #player-name-input {
-            background-color: #0f0f1a; border: 2px solid #4a4e69; color: white;
-            padding: 8px; border-radius: 5px; text-align: center;
-            font-family: 'Russo One', sans-serif; margin-bottom: 10px;
+            background-color: #0f0f1a;
+            border: 2px solid #4a4e69;
+            color: white;
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+            font-family: 'Russo One', sans-serif;
+            margin-bottom: 10px;
         }
         #mute-button {
             position: absolute;
-            top: 5px;
+            top: 10px;
             left: 10px;
             width: 40px;
             height: 40px;
@@ -104,32 +177,47 @@
             color: white;
         }
         #whatsapp-link {
-            display: flex; align-items: center; justify-content: center;
-            gap: 10px; margin-top: 20px; padding: 10px;
-            border-radius: 8px; text-decoration: none; color: #e0e0e0;
-            background-color: rgba(15, 15, 26, 0.5); border: 1px solid #4a4e69;
-            transition: background-color 0.2s; font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #e0e0e0;
+            background-color: rgba(15, 15, 26, 0.5);
+            border: 1px solid #4a4e69;
+            transition: background-color 0.2s;
+            font-size: 0.9rem;
         }
-        #whatsapp-link:hover { background-color: rgba(74, 78, 105, 0.5); }
+        #whatsapp-link:hover {
+            background-color: rgba(74, 78, 105, 0.5);
+        }
         #whatsapp-link .whatsapp-icon {
-            width: 24px; height: 24px; color: #25D366;
+            width: 24px;
+            height: 24px;
+            color: #25D366;
             filter: drop-shadow(0 0 3px #25D366);
         }
         #next-piece-container {
             position: absolute;
-            top: 5px;
+            top: 10px;
             right: 10px;
             background-color: rgba(15, 15, 26, 0.5);
             border: 2px solid #4a4e69;
             border-radius: 8px;
             padding: 5px;
             z-index: 50;
+            transform: scale(0.8);
         }
-        #next-piece-canvas { display: block; }
+        #next-piece-canvas {
+            display: block;
+        }
         #fullscreen-button {
             position: absolute;
-            top: 5px;
-            right: 90px;
+            top: 15px;
+            right: 60px;
             width: 40px;
             height: 40px;
             background-color: rgba(252, 163, 17, 0.4);
@@ -194,7 +282,7 @@
     <script type="module">
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, getDoc, setDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         window.addEventListener('load', () => {
@@ -217,7 +305,6 @@
             const playerNameInput = document.getElementById('player-name-input');
             const saveScoreButton = document.getElementById('save-score-button');
             const muteButton = document.getElementById('mute-button');
-            const fullscreenButton = document.getElementById('fullscreen-button');
 
             const COLS = 10;
             const ROWS = 20;
@@ -240,24 +327,23 @@
 
             let db, auth;
             const persistentAppId = 'tetris-yoridpa-global';
+
+            let isSoftDrop = false; // Nova flag para soft drop
+            let softDropTimeout; // Timer para hold no touch
+            let isHolding = false; // Flag para detectar hold longo no touch
             
             async function initFirebase() {
+                const firebaseConfig = {
+                  apiKey: "AIzaSyAHKPetYO0_GKKa6zn7hA77HobsJu_8pUg",
+                  authDomain: "yoridpa-tetris.firebaseapp.com",
+                  projectId: "yoridpa-tetris",
+                  storageBucket: "yoridpa-tetris.appspot.com",
+                  messagingSenderId: "1067967404196",
+                  appId: "1:1067967404196:web:0f56aa3ed0d4f239faae31",
+                  measurementId: "G-SMCMQNN97R"
+                };
+
                 try {
-                    const firebaseConfigFromEnv = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-                    let firebaseConfig = JSON.parse(firebaseConfigFromEnv);
-
-                    if (Object.keys(firebaseConfig).length === 0) {
-                        firebaseConfig = {
-                            apiKey: "AIzaSyAHKPetYO0_GKKa6zn7hA77HobsJu_8pUg",
-                            authDomain: "yoridpa-tetris.firebaseapp.com",
-                            projectId: "yoridpa-tetris",
-                            storageBucket: "yoridpa-tetris.appspot.com",
-                            messagingSenderId: "1067967404196",
-                            appId: "1:1067967404196:web:0f56aa3ed0d4f239faae31",
-                            measurementId: "G-SMCMQNN97R"
-                        };
-                    }
-
                     const app = initializeApp(firebaseConfig);
                     db = getFirestore(app);
                     auth = getAuth(app);
@@ -270,17 +356,12 @@
                         }
                     });
 
-                    const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-                    if (authToken) {
-                        await signInWithCustomToken(auth, authToken);
-                    } else {
-                        await signInAnonymously(auth);
-                    }
+                    await signInAnonymously(auth);
 
                 } catch (error) {
                     console.error("Erro ao inicializar o Firebase:", error);
                     startButton.disabled = true;
-                    if (error.code === 'auth/configuration-not-found') {
+                    if (error.code === 'auth/operation-not-allowed') { // Corrigido para o código certo de erro
                         startButton.innerText = "Ação Necessária";
                         modalText.innerHTML = `
                             <p class="text-red-400 font-bold">A Autenticação Anônima não está ativada no seu projeto Firebase.</p>
@@ -400,7 +481,7 @@
                     sweepLines();
                     resetPlayer();
                 }
-                dropCounter = 0;
+                // Removido dropCounter = 0; para permitir acumulação no soft drop
             }
             function playerHardDrop() {
                 if (!player) return;
@@ -441,16 +522,27 @@
                 if (!lastTime) lastTime = time;
                 const deltaTime = time - lastTime;
                 lastTime = time;
-                dropCounter += deltaTime;
-                const currentDropInterval = isSoftDropping ? 50 : dropInterval;
-                if (dropCounter > currentDropInterval) playerDrop();
+                dropCounter += deltaTime * (isSoftDrop ? 10 : 1); // Acelera 10x no soft drop
+                if (dropCounter > dropInterval) {
+                    playerDrop();
+                    dropCounter -= dropInterval; // Acumula para suavidade
+                }
                 draw();
                 animationFrameId = requestAnimationFrame(update);
+            }
+            function toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    gameContainer.requestFullscreen().catch(err => {
+                        console.error("Erro ao entrar em modo fullscreen:", err);
+                    });
+                } else {
+                    document.exitFullscreen();
+                }
             }
             function handleResize() {
                 const windowWidth = window.innerWidth;
                 const windowHeight = window.innerHeight;
-                const aspectRatio = COLS / ROWS;
+                const aspectRatio = COLS / ROWS; // Proporção do tabuleiro (10/20 = 0.5)
                 let canvasWidth, canvasHeight;
 
                 if (windowWidth / windowHeight > aspectRatio) {
@@ -467,6 +559,9 @@
 
                 canvas.style.width = `${canvasWidth}px`;
                 canvas.style.height = `${canvasHeight}px`;
+
+                nextPieceCanvas.width = 4 * 15;
+                nextPieceCanvas.height = 4 * 15;
 
                 if (!isGameOver) draw();
             }
@@ -493,12 +588,12 @@
 
             async function startGame() {
                 try {
-                    if (typeof window.Tone !== 'undefined' && !audioInitialized) {
-                        await window.Tone.start();
+                    if (typeof Tone !== 'undefined' && !audioInitialized) {
+                        await Tone.start();
                         initAudio();
                     }
-                    if (window.Tone && window.Tone.Transport.state !== 'started') {
-                        window.Tone.Transport.start();
+                    if (Tone && Tone.Transport.state !== 'started') {
+                        Tone.Transport.start();
                     }
                     if (musicLoop) musicLoop.start(0);
                 } catch (e) {
@@ -516,13 +611,18 @@
                 handleResize();
                 resetPlayer();
                 modalOverlay.style.display = 'none';
+                if (!document.fullscreenElement) {
+                    gameContainer.requestFullscreen().catch(err => {
+                        console.error("Erro ao entrar em modo fullscreen:", err);
+                    });
+                }
                 update();
             }
 
             async function gameOver() {
                 isGameOver = true;
-                if (typeof window.Tone !== 'undefined' && window.Tone.Transport.state === 'started') {
-                    window.Tone.Transport.stop();
+                if (typeof Tone !== 'undefined' && Tone.Transport.state === 'started') {
+                    Tone.Transport.stop();
                 }
                 if (musicLoop) musicLoop.stop();
                 cancelAnimationFrame(animationFrameId);
@@ -616,38 +716,46 @@
                 }
             }
 
-            let touchStartX, touchStartY, isDragging, holdTimeout;
-            let isSoftDropping = false;
+            document.addEventListener('keydown', event => {
+                if (isGameOver) return;
+                if (event.key === 'ArrowLeft') playerMove(-1);
+                else if (event.key === 'ArrowRight') playerMove(1);
+                else if (event.key === 'ArrowDown') {
+                    isSoftDrop = true; // Ativa soft drop no hold
+                    playerDrop(); // Desce imediato no press inicial
+                }
+                else if (event.key === 'ArrowUp') playerRotate();
+                else if (event.code === 'Space') playerHardDrop();
+            });
 
+            document.addEventListener('keyup', event => {
+                if (isGameOver) return;
+                if (event.key === 'ArrowDown') isSoftDrop = false; // Desativa no release
+            });
+            
+            let touchStartX, touchStartY, isDragging;
             document.addEventListener('touchstart', e => {
                 if (isGameOver) return;
                 e.preventDefault();
                 isDragging = false;
-                isSoftDropping = false;
+                isHolding = false;
                 touchStartX = e.touches[0].clientX;
                 touchStartY = e.touches[0].clientY;
-
-                clearTimeout(holdTimeout);
-                holdTimeout = setTimeout(() => {
-                    if (!isDragging) {
-                        isSoftDropping = true;
-                    }
-                }, 200);
+                softDropTimeout = setTimeout(() => {
+                    isSoftDrop = true;
+                    isHolding = true;
+                }, 300); // Hold 300ms para soft drop
             }, { passive: false });
 
             document.addEventListener('touchmove', e => {
                 if (isGameOver) return;
                 e.preventDefault(); 
-                
                 const dx = e.touches[0].clientX - touchStartX;
                 const dy = e.touches[0].clientY - touchStartY;
-
                 if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
                     isDragging = true;
-                    clearTimeout(holdTimeout);
-                    isSoftDropping = false;
+                    clearTimeout(softDropTimeout); // Cancela soft drop se mover
                 }
-
                 if (Math.abs(dx) > blockSize) {
                     playerMove(dx > 0 ? 1 : -1);
                     touchStartX = e.touches[0].clientX;
@@ -657,29 +765,18 @@
             
             document.addEventListener('touchend', e => {
                 if (isGameOver) return;
-                clearTimeout(holdTimeout);
-                isSoftDropping = false;
-
-                if (!isDragging) {
-                    playerRotate();
-                    return;
+                clearTimeout(softDropTimeout);
+                isSoftDrop = false;
+                if (!isDragging && !isHolding) {
+                    playerRotate(); // Rotaciona só se tap rápido (não hold)
                 }
-
-                const dy = e.changedTouches[0].clientY - touchStartY;
-                const dx = e.changedTouches[0].clientX - touchStartX;
-                if (dy > Math.abs(dx) && dy > 50) {
-                    playerHardDrop();
+                if (isDragging) {
+                    const dy = e.changedTouches[0].clientY - touchStartY;
+                    const dx = e.changedTouches[0].clientX - touchStartX;
+                    if (dy > Math.abs(dx) && dy > 50) playerHardDrop();
                 }
+                isHolding = false;
             });
-            function toggleFullscreen() {
-                if (!document.fullscreenElement) {
-                    gameContainer.requestFullscreen().catch(err => {
-                        console.error("Erro ao entrar em modo fullscreen:", err);
-                    });
-                } else {
-                    document.exitFullscreen();
-                }
-            }
 
             window.addEventListener('resize', handleResize);
             startButton.addEventListener('click', startGame);
@@ -707,7 +804,10 @@
                     muteButton.textContent = Tone.Destination.mute ? '🔇' : '🔊';
                 }
             });
-            fullscreenButton.addEventListener('click', toggleFullscreen);
+            const fullscreenButton = document.getElementById('fullscreen-button');
+            if (fullscreenButton) {
+                fullscreenButton.addEventListener('click', toggleFullscreen);
+            }
 
             async function main() {
                 await initFirebase();
