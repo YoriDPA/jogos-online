@@ -115,7 +115,6 @@
             filter: drop-shadow(0 0 3px #25D366);
         }
         
-        /* --- ESTILOS PARA A PRÉVIA DA PEÇA --- */
         #next-piece-container {
             position: absolute;
             top: 15px;
@@ -123,16 +122,16 @@
             background-color: rgba(15, 15, 26, 0.7);
             border: 2px solid #4a4e69;
             border-radius: 8px;
-            padding: 10px;
+            padding: 5px; /* Padding diminuído */
             display: flex;
             flex-direction: column;
             align-items: center;
             z-index: 50;
-            visibility: hidden; /* Começa escondido */
+            visibility: hidden;
         }
         #next-piece-container h3 {
             margin: 0 0 5px 0;
-            font-size: 0.8rem;
+            font-size: 0.7rem; /* Tamanho da fonte diminuído */
             color: #fca311;
             text-transform: uppercase;
         }
@@ -157,7 +156,6 @@
         <div id="score-popup"><span id="score">0</span></div>
         <div id="dev-signature">Dev. YoriDPA</div>
         <div id="mute-button">🔊</div>
-        <!-- Container da prévia da peça -->
         <div id="next-piece-container">
             <h3>Próxima</h3>
             <canvas id="next-piece-canvas"></canvas>
@@ -295,7 +293,7 @@
                 }
                 player.x = Math.floor(COLS / 2) - Math.floor(player.matrix[0].length / 2);
                 player.y = 0;
-                drawNextPiece(); // Atualiza a prévia
+                drawNextPiece();
                 if (checkCollision(board, player)) gameOver();
             }
             function draw() {
@@ -320,7 +318,7 @@
             
             function drawNextPiece() {
                 if (!nextPieceCtx || !nextPiece) return;
-                const scale = 20; // Tamanho fixo para os blocos da prévia
+                const scale = 15; // Tamanho diminuído para os blocos da prévia
                 nextPieceCanvas.width = 4 * scale;
                 nextPieceCanvas.height = 4 * scale;
                 nextPieceCtx.clearRect(0, 0, nextPieceCanvas.width, nextPieceCanvas.height);
@@ -480,13 +478,13 @@
                 handleResize();
                 resetPlayer();
                 modalOverlay.style.display = 'none';
-                nextPieceContainer.style.visibility = 'visible'; // Mostra a prévia
+                nextPieceContainer.style.visibility = 'visible';
                 update();
             }
 
             async function gameOver() {
                 isGameOver = true;
-                nextPieceContainer.style.visibility = 'hidden'; // Esconde a prévia
+                nextPieceContainer.style.visibility = 'hidden';
                 if (typeof Tone !== 'undefined' && Tone.Transport.state === 'started') {
                     Tone.Transport.stop();
                 }
@@ -615,13 +613,25 @@
             
             document.addEventListener('touchend', e => {
                 if (isGameOver) return;
+                
+                const dy = e.changedTouches[0].clientY - touchStartY;
+                const dx = e.changedTouches[0].clientX - touchStartX;
+                
+                const softDropThreshold = 40;
+                const hardDropThreshold = 120;
+
                 if (!isDragging) {
                     playerRotate();
                     return;
                 }
-                const dy = e.changedTouches[0].clientY - touchStartY;
-                const dx = e.changedTouches[0].clientX - touchStartX;
-                if (dy > Math.abs(dx) && dy > 50) playerHardDrop();
+
+                if (dy > Math.abs(dx)) { // Movimento predominantemente vertical
+                    if (dy > hardDropThreshold) {
+                        playerHardDrop();
+                    } else if (dy > softDropThreshold) {
+                        playerDrop();
+                    }
+                }
             });
 
             window.addEventListener('resize', handleResize);
