@@ -82,11 +82,21 @@
             font-family: 'Russo One', sans-serif; margin-bottom: 10px;
         }
         #mute-button {
-            position: absolute; top: 10px; left: 10px;
-            width: 40px; height: 40px; background-color: rgba(252, 163, 17, 0.4);
-            border-radius: 50%; border: none; color: rgba(255, 255, 255, 0.7);
-            font-size: 1.2rem; display: flex;
-            justify-content: center; align-items: center; cursor: pointer; z-index: 50;
+            position: absolute;
+            top: 5px;
+            left: 10px;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(252, 163, 17, 0.4);
+            border-radius: 50%;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 50;
             transition: background-color 0.2s, color 0.2s;
         }
         #mute-button:hover {
@@ -106,17 +116,32 @@
             filter: drop-shadow(0 0 3px #25D366);
         }
         #next-piece-container {
-            position: absolute; top: 10px; right: 10px;
-            background-color: rgba(15, 15, 26, 0.5); border: 2px solid #4a4e69;
-            border-radius: 8px; padding: 5px; z-index: 50;
+            position: absolute;
+            top: 5px;
+            right: 10px;
+            background-color: rgba(15, 15, 26, 0.5);
+            border: 2px solid #4a4e69;
+            border-radius: 8px;
+            padding: 5px;
+            z-index: 50;
         }
         #next-piece-canvas { display: block; }
         #fullscreen-button {
-            position: absolute; top: 10px; right: 90px;
-            width: 40px; height: 40px; background-color: rgba(252, 163, 17, 0.4);
-            border-radius: 50%; border: none; color: rgba(255, 255, 255, 0.7);
-            font-size: 1.2rem; display: flex;
-            justify-content: center; align-items: center; cursor: pointer; z-index: 50;
+            position: absolute;
+            top: 5px;
+            right: 90px;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(252, 163, 17, 0.4);
+            border-radius: 50%;
+            border: none;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.2rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            z-index: 50;
             transition: background-color 0.2s, color 0.2s;
         }
         #fullscreen-button:hover {
@@ -169,7 +194,7 @@
     <script type="module">
         // Importações do Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, getDoc, setDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         window.addEventListener('load', () => {
@@ -217,17 +242,22 @@
             const persistentAppId = 'tetris-yoridpa-global';
             
             async function initFirebase() {
-                const firebaseConfig = {
-                  apiKey: "AIzaSyAHKPetYO0_GKKa6zn7hA77HobsJu_8pUg",
-                  authDomain: "yoridpa-tetris.firebaseapp.com",
-                  projectId: "yoridpa-tetris",
-                  storageBucket: "yoridpa-tetris.appspot.com",
-                  messagingSenderId: "1067967404196",
-                  appId: "1:1067967404196:web:0f56aa3ed0d4f239faae31",
-                  measurementId: "G-SMCMQNN97R"
-                };
-
                 try {
+                    const firebaseConfigFromEnv = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
+                    let firebaseConfig = JSON.parse(firebaseConfigFromEnv);
+
+                    if (Object.keys(firebaseConfig).length === 0) {
+                        firebaseConfig = {
+                            apiKey: "AIzaSyAHKPetYO0_GKKa6zn7hA77HobsJu_8pUg",
+                            authDomain: "yoridpa-tetris.firebaseapp.com",
+                            projectId: "yoridpa-tetris",
+                            storageBucket: "yoridpa-tetris.appspot.com",
+                            messagingSenderId: "1067967404196",
+                            appId: "1:1067967404196:web:0f56aa3ed0d4f239faae31",
+                            measurementId: "G-SMCMQNN97R"
+                        };
+                    }
+
                     const app = initializeApp(firebaseConfig);
                     db = getFirestore(app);
                     auth = getAuth(app);
@@ -240,7 +270,12 @@
                         }
                     });
 
-                    await signInAnonymously(auth);
+                    const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                    if (authToken) {
+                        await signInWithCustomToken(auth, authToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
 
                 } catch (error) {
                     console.error("Erro ao inicializar o Firebase:", error);
@@ -438,32 +473,32 @@
             
             function initAudio() {
                 if (audioInitialized || typeof window.Tone === 'undefined') return;
-                musicSynth = new window.Tone.Synth({
+                musicSynth = new Tone.Synth({
                     oscillator: { type: 'fmsquare' },
                     envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.1 }
                 }).toDestination();
                 
-                scoreSynth = new window.Tone.Synth({
+                scoreSynth = new Tone.Synth({
                     oscillator: { type: 'triangle8' },
                     envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 1 }
                 }).toDestination();
 
-                musicLoop = new window.Tone.Sequence((time, note) => {
+                musicLoop = new Tone.Sequence((time, note) => {
                     if (musicSynth) musicSynth.triggerAttackRelease(note, '8n', time);
                 }, ['C2', ['E2', 'G2'], 'A2', 'G2'], '4n');
                 
-                window.Tone.Transport.bpm.value = 120;
+                Tone.Transport.bpm.value = 120;
                 audioInitialized = true;
             }
 
             async function startGame() {
                 try {
-                    if (typeof window.Tone !== 'undefined' && !audioInitialized) {
-                        await window.Tone.start();
+                    if (typeof Tone !== 'undefined' && !audioInitialized) {
+                        await Tone.start();
                         initAudio();
                     }
-                    if (window.Tone && window.Tone.Transport.state !== 'started') {
-                        window.Tone.Transport.start();
+                    if (Tone && Tone.Transport.state !== 'started') {
+                        Tone.Transport.start();
                     }
                     if (musicLoop) musicLoop.start(0);
                 } catch (e) {
@@ -486,8 +521,8 @@
 
             async function gameOver() {
                 isGameOver = true;
-                if (typeof window.Tone !== 'undefined' && window.Tone.Transport.state === 'started') {
-                    window.Tone.Transport.stop();
+                if (typeof Tone !== 'undefined' && Tone.Transport.state === 'started') {
+                    Tone.Transport.stop();
                 }
                 if (musicLoop) musicLoop.stop();
                 cancelAnimationFrame(animationFrameId);
