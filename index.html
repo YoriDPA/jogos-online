@@ -493,12 +493,12 @@
 
             async function startGame() {
                 try {
-                    if (typeof Tone !== 'undefined' && !audioInitialized) {
-                        await Tone.start();
+                    if (typeof window.Tone !== 'undefined' && !audioInitialized) {
+                        await window.Tone.start();
                         initAudio();
                     }
-                    if (Tone && Tone.Transport.state !== 'started') {
-                        Tone.Transport.start();
+                    if (window.Tone && window.Tone.Transport.state !== 'started') {
+                        window.Tone.Transport.start();
                     }
                     if (musicLoop) musicLoop.start(0);
                 } catch (e) {
@@ -521,8 +521,8 @@
 
             async function gameOver() {
                 isGameOver = true;
-                if (typeof Tone !== 'undefined' && Tone.Transport.state === 'started') {
-                    Tone.Transport.stop();
+                if (typeof window.Tone !== 'undefined' && window.Tone.Transport.state === 'started') {
+                    window.Tone.Transport.stop();
                 }
                 if (musicLoop) musicLoop.stop();
                 cancelAnimationFrame(animationFrameId);
