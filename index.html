@@ -8,7 +8,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
-    
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
@@ -55,7 +54,7 @@
             justify-content: center;
             pointer-events: none;
         }
-        .start-screen-content, .game-over-content, .pause-screen-content, .admin-panel-content {
+        .start-screen-content, .game-over-content, .pause-screen-content {
             pointer-events: all;
             text-align: center;
             display: flex;
@@ -98,7 +97,7 @@
             background-color: #3fff3f;
             color: #000;
         }
-        .game-over-dialog, .pause-dialog, .admin-dialog {
+        .game-over-dialog, .pause-dialog {
             background-color: rgba(0, 0, 0, 0.85);
             padding: 30px 40px;
             border-radius: 15px;
@@ -107,7 +106,7 @@
             width: 90%;
             max-width: 500px;
         }
-        .game-over-dialog h1, .pause-dialog h1, .admin-dialog h1 {
+        .game-over-dialog h1, .pause-dialog h1 {
             font-size: 2rem;
             margin-bottom: 20px;
             color: #3fff3f;
@@ -191,6 +190,36 @@
         .sound-toggle i.muted {
             opacity: 0.3;
         }
+        .fullscreen-toggle {
+            position: absolute;
+            top: 20px;
+            right: 60px;
+            z-index: 12;
+            background: transparent;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+        }
+        .fullscreen-toggle i {
+            font-size: 1.2rem;
+            color: #fff;
+            text-shadow: 0 0 5px #3fff3f, 0 0 10px #3fff3f;
+            transition: opacity 0.3s ease, transform 0.2s ease;
+        }
+        .fullscreen-toggle i:hover {
+            transform: scale(1.1);
+        }
+        .fullscreen-toggle i.compressed {
+            opacity: 0.3;
+        }
+        body:-webkit-full-screen,
+        body:-moz-full-screen,
+        body:-ms-fullscreen,
+        body:fullscreen {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
         .signature {
             margin-top: 20px;
             font-size: 0.9rem;
@@ -229,13 +258,13 @@
             padding: 10px;
             text-align: left;
         }
+        .dropdown-content.show {
+            display: block;
+        }
         .dropdown-content li {
             color: #ffcc00;
             padding: 5px 0;
             font-size: 1rem;
-        }
-        .dropdown-content.show {
-            display: block;
         }
         .name-input-container {
             margin: 20px 0;
@@ -289,19 +318,6 @@
         .whatsapp-content i {
             font-size: 1.5rem;
         }
-        /* Estilos do Painel Admin */
-        #allPlayersList {
-            list-style: none;
-            padding: 0;
-            max-height: 300px;
-            overflow-y: auto;
-            text-align: left;
-            color: #fff;
-        }
-        #allPlayersList li {
-            padding: 5px;
-            border-bottom: 1px solid #3fff3f;
-        }
     </style>
 </head>
 <body>
@@ -326,12 +342,11 @@
                 </div>
                 <div id="loggedInSection" style="display: none; text-align: center;">
                     <button id="startButton" class="game-button">Iniciar</button>
-                    <button id="adminPanelButton" class="game-button secondary" style="display: none;">Jogadores Online</button>
                     <button id="changeUserButton" class="game-button secondary">Trocar de Usuário</button>
                 </div>
-                <p class="signature" id="signature">Criado por YoriDPA</p>
+                <p class="signature">Criado por YoriDPA</p>
 
-                <a href="https://wa.me/5527996162221" target="_blank" class="whatsapp-link" id="whatsappLink">
+                <a href="https://wa.me/5527996162221" target="_blank" class="whatsapp-link">
                     <div class="whatsapp-content">
                         <span>Dúvidas ou sugestões?</span>
                         <i class="fa-brands fa-whatsapp"></i>
@@ -356,14 +371,6 @@
                     <button id="resumeButton" class="game-button">Continuar</button>
                 </div>
             </div>
-            
-            <div id="adminPanel" class="admin-panel-content hidden">
-                <div class="admin-dialog">
-                    <h1>Jogadores Online</h1>
-                    <ul id="allPlayersList"><li>Carregando...</li></ul>
-                    <button id="closeAdminPanelButton" class="game-button secondary">Fechar</button>
-                </div>
-            </div>
         </div>
 
         <div id="scoreDisplay" class="score-display hidden">0</div>
@@ -372,6 +379,9 @@
         
         <div class="sound-toggle">
             <button id="soundToggleButton" class="sound-toggle"><i class="fas fa-volume-up"></i></button>
+        </div>
+        <div class="fullscreen-toggle">
+            <button id="fullscreenToggleButton" class="fullscreen-toggle"><i class="fas fa-expand"></i></button>
         </div>
     </div>
 
@@ -390,7 +400,6 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const scoresRef = database.ref('scores');
-        const statusRef = database.ref('status');
 
         const gameContainer = document.getElementById('game-container');
         const backgroundCanvas = document.getElementById('backgroundCanvas');
@@ -407,6 +416,7 @@
         const backToMenuButton = document.getElementById('backToMenuButton');
         const startMovementButton = document.getElementById('startMovementButton');
         const soundToggleButton = document.getElementById('soundToggleButton');
+        const fullscreenToggleButton = document.getElementById('fullscreenToggleButton');
         const scoreDisplay = document.getElementById('scoreDisplay');
         const finalScoreDisplay = document.getElementById('finalScore');
         const gameOverHighScoreDisplay = document.getElementById('gameOverHighScore');
@@ -421,20 +431,11 @@
         const nameInputSection = document.getElementById('nameInputSection');
         const loggedInSection = document.getElementById('loggedInSection');
         const changeUserButton = document.getElementById('changeUserButton');
-        
-        const adminPanel = document.getElementById('adminPanel');
-        const adminPanelButton = document.getElementById('adminPanelButton');
-        const closeAdminPanelButton = document.getElementById('closeAdminPanelButton');
-        const allPlayersList = document.getElementById('allPlayersList');
-
 
         let playerName = localStorage.getItem('playerName') || null;
         let playerId = localStorage.getItem('playerId') || null;
         let isSoundOn = true;
         let audioReady = false;
-        let isAdmin = false;
-        const ADMIN_USERNAME = "Admin";
-        const ADMIN_PASSWORD = "88645912";
 
         const synth = new Tone.FMSynth({
             harmonicity: 8,
@@ -473,7 +474,6 @@
         const gridSize = 20;
         let snake, food, powerUp, direction, score, speed, gameInterval, changingDirection;
         let isPaused = false;
-        
         let powerUpTimer = null;
         const POWERUP_LIFESPAN = 7000;
         const POWERUP_SPAWN_INTERVAL = 10000;
@@ -500,9 +500,8 @@
 
         function saveTopScores(name, newScore) {
             const currentPId = localStorage.getItem('playerId');
-            if (!currentPId || !name || newScore < 0 || isAdmin) return;
+            if (!currentPId || !name || newScore < 0) return;
             const userScoreRef = database.ref('scores/' + currentPId);
-            
             userScoreRef.child('score').once('value', (snapshot) => {
                 const currentScore = snapshot.val() || 0;
                 if (newScore > currentScore) {
@@ -510,15 +509,12 @@
                 }
             });
         }
-        
+
         function updateHighScoreDisplays() {
             const highScoreLabel = document.getElementById('highScoreLabel');
-
             loadTopScores((topScores) => {
                 const globalHighScore = topScores.length > 0 ? topScores[0].score : 0;
-                
                 gameOverHighScoreDisplay.textContent = globalHighScore;
-
                 topScoresList.innerHTML = '';
                 if (topScores.length > 0) {
                     topScores.forEach((entry, index) => {
@@ -529,9 +525,8 @@
                 } else {
                     topScoresList.innerHTML = '<li>Nenhum score ainda.</li>';
                 }
-
                 const currentPId = localStorage.getItem('playerId');
-                if (currentPId && !isAdmin) {
+                if (currentPId) {
                     const userScoreRef = database.ref('scores/' + currentPId + '/score');
                     userScoreRef.once('value', (snapshot) => {
                         const userBestScore = snapshot.val() || 0;
@@ -551,7 +546,6 @@
                     callback(null);
                     return;
                 }
-
                 const scores = [];
                 snapshot.forEach((childSnapshot) => {
                     scores.push({
@@ -559,10 +553,8 @@
                         score: childSnapshot.val().score
                     });
                 });
-
                 scores.sort((a, b) => b.score - a.score);
                 const rank = scores.findIndex(p => p.id === playerId) + 1;
-
                 if (rank > 0) {
                     callback(rank);
                 } else {
@@ -581,6 +573,20 @@
                 canvas.width = w;
                 canvas.height = h;
             });
+            if (snake && food) {
+                const numCols = getGridCols();
+                const numRows = getGridRows();
+                snake.forEach(segment => {
+                    segment.x = Math.min(segment.x, numCols - 1);
+                    segment.y = Math.min(segment.y, numRows - 1);
+                });
+                food.x = Math.min(food.x, numCols - 1);
+                food.y = Math.min(food.y, numRows - 1);
+                if (powerUp) {
+                    powerUp.x = Math.min(powerUp.x, numCols - 1);
+                    powerUp.y = Math.min(powerUp.y, numRows - 1);
+                }
+            }
             drawBackgroundGrid();
         }
 
@@ -623,7 +629,7 @@
             gameCtx.fill();
             gameCtx.restore();
         }
-        
+
         function drawFood() {
             if (!food) return;
             const size = gridSize * 0.8;
@@ -669,7 +675,7 @@
             }
             setTimeout(() => powerUpMessage.classList.add('hidden'), 3000);
         }
-        
+
         function initializeGame() {
             const numCols = getGridCols();
             const numRows = getGridRows();
@@ -752,13 +758,16 @@
 
         function isGameOver() {
             const head = snake[0];
-            
+            const numCols = getGridCols();
+            const numRows = getGridRows();
+            if (head.x < 0 || head.x >= numCols || head.y < 0 || head.y >= numRows) {
+                return true;
+            }
             for (let i = 1; i < snake.length; i++) {
                 if (head.x === snake[i].x && head.y === snake[i].y) {
-                    return !isAdmin; 
+                    return true;
                 }
             }
-
             return false;
         }
 
@@ -771,23 +780,6 @@
                 case 'left': head.x--; break;
                 case 'right': head.x++; break;
             }
-
-            if (isAdmin) {
-                const numCols = getGridCols();
-                const numRows = getGridRows();
-                if (head.x < 0) head.x = numCols - 1;
-                if (head.x >= numCols) head.x = 0;
-                if (head.y < 0) head.y = numRows - 1;
-                if (head.y >= numRows) head.y = 0;
-            } else {
-                const numCols = getGridCols();
-                const numRows = getGridRows();
-                if (head.x < 0 || head.x >= numCols || head.y < 0 || head.y >= numRows) {
-                    stopGame();
-                    return;
-                }
-            }
-
             snake.unshift(head);
             let ateSomething = false;
             if (food && head.x === food.x && head.y === food.y) {
@@ -851,7 +843,7 @@
                 powerUpTimer = setInterval(trySpawningPowerUp, POWERUP_SPAWN_INTERVAL);
             }
         }
-        
+
         let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
         function handleTouchStart(event) {
             event.preventDefault();
@@ -880,7 +872,7 @@
                 cancelAnimationFrame(animationFrameId);
                 animationFrameId = null;
             }
-            resizeAllCanvases(); 
+            resizeAllCanvases();
             startScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
             scoreDisplay.classList.remove('hidden');
@@ -916,13 +908,13 @@
                     }
                 });
             } else {
-                 playerRankDisplay.textContent = 'N/A';
+                playerRankDisplay.textContent = 'N/A';
             }
 
             updateHighScoreDisplays();
             playSound('gameOver');
         }
-        
+
         function addEventListeners() {
             document.addEventListener('keydown', handleKeyDown);
             gameCanvas.addEventListener('touchstart', handleTouchStart, { passive: false });
@@ -964,7 +956,7 @@
             else if (demoDirection === 'down' && head.y >= numRows - 1) demoDirection = 'left';
             else if (demoDirection === 'left' && head.x <= 0) demoDirection = 'up';
             else if (demoDirection === 'up' && head.y <= 0) demoDirection = 'right';
-            switch (direction) {
+            switch (demoDirection) {
                 case 'up': head.y--; break;
                 case 'down': head.y++; break;
                 case 'left': head.x--; break;
@@ -980,68 +972,48 @@
             });
         }
 
-        function setupPresence() {
-            const currentPId = localStorage.getItem('playerId');
-            const currentPName = localStorage.getItem('playerName');
-            if (!currentPId || !currentPName) return;
-
-            const userStatusRef = database.ref('/status/' + currentPId);
-            const isOnline = {
-                name: currentPName,
-                online: true,
-                last_changed: firebase.database.ServerValue.TIMESTAMP,
-            };
-            const isOffline = {
-                name: currentPName,
-                online: false,
-                last_changed: firebase.database.ServerValue.TIMESTAMP,
-            };
-
-            database.ref('.info/connected').on('value', (snapshot) => {
-                if (snapshot.val() === false) {
-                    return;
-                }
-                userStatusRef.onDisconnect().set(isOffline).then(() => {
-                    userStatusRef.set(isOnline);
+        function toggleFullscreen() {
+            const icon = fullscreenToggleButton.querySelector('i');
+            if (!document.fullscreenElement) {
+                const requestFull = gameContainer.requestFullscreen || gameContainer.webkitRequestFullscreen;
+                requestFull.call(gameContainer).then(() => {
+                    icon.classList.remove('fa-expand');
+                    icon.classList.add('fa-compress', 'compressed');
+                    resizeAllCanvases();
+                }).catch(err => {
+                    console.error('Erro ao entrar em tela cheia:', err);
+                    showCustomAlert('Não foi possível entrar em tela cheia.');
                 });
-            });
+            } else {
+                document.exitFullscreen().then(() => {
+                    icon.classList.remove('fa-compress', 'compressed');
+                    icon.classList.add('fa-expand');
+                    resizeAllCanvases();
+                }).catch(err => {
+                    console.error('Erro ao sair de tela cheia:', err);
+                    showCustomAlert('Não foi possível sair de tela cheia.');
+                });
+            }
         }
 
         function setupUI() {
             playerName = localStorage.getItem('playerName');
             playerId = localStorage.getItem('playerId');
-            const signature = document.getElementById('signature');
-            const whatsappLink = document.getElementById('whatsappLink');
-
             if (playerName && playerId) {
                 nameInputSection.style.display = 'none';
                 loggedInSection.style.display = 'flex';
                 loggedInSection.style.flexDirection = 'column';
                 loggedInSection.style.alignItems = 'center';
-                
-                if (isAdmin) {
-                    adminPanelButton.style.display = 'block';
-                    signature.style.display = 'none';
-                    whatsappLink.style.display = 'none';
-                } else {
-                    adminPanelButton.style.display = 'none';
-                    signature.style.display = 'block';
-                    whatsappLink.style.display = 'block';
-                }
             } else {
                 nameInputSection.style.display = 'block';
                 loggedInSection.style.display = 'none';
-                adminPanelButton.style.display = 'none';
-                isAdmin = false;
-                signature.style.display = 'block';
-                whatsappLink.style.display = 'block';
             }
         }
 
         function formatPlayerName(name) {
             return name.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
         }
-        
+
         function hashPassword(password) {
             return btoa(password);
         }
@@ -1053,14 +1025,12 @@
                 startButton.addEventListener('click', runGame);
                 restartButton.addEventListener('click', runGame);
                 resumeButton.addEventListener('click', togglePause);
-
                 backToMenuButton.addEventListener('click', () => {
                     gameOverScreen.classList.add('hidden');
                     startScreen.classList.remove('hidden');
                     updateHighScoreDisplays();
                     initializeBackgroundAnimation();
                 });
-
                 startMovementButton.addEventListener('click', () => {
                     if (!direction) {
                         direction = 'right';
@@ -1069,7 +1039,6 @@
                         startMovementButton.classList.add('hidden');
                     }
                 });
-
                 soundToggleButton.addEventListener('click', () => {
                     isSoundOn = !isSoundOn;
                     const icon = soundToggleButton.querySelector('i');
@@ -1077,11 +1046,10 @@
                     icon.classList.toggle('fa-volume-mute', !isSoundOn);
                     icon.classList.toggle('muted', !isSoundOn);
                 });
-
+                fullscreenToggleButton.addEventListener('click', toggleFullscreen);
                 topScoresButton.addEventListener('click', () => {
                     dropdownContent.classList.toggle('show');
                 });
-
                 submitNameButton.addEventListener('click', () => {
                     const rawName = playerNameInput.value.trim();
                     const password = playerPasswordInput.value.trim();
@@ -1092,47 +1060,19 @@
                     }
 
                     const formattedName = formatPlayerName(rawName);
-                    
-                    // **CORREÇÃO FINAL: Lógica de Admin separada**
-                    if (formattedName === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-                        isAdmin = true;
-                        // Verifica se a conta Admin já existe para obter o ID, senão cria uma.
-                        scoresRef.orderByChild('name').equalTo(ADMIN_USERNAME).once('value', snapshot => {
-                            let adminPlayerId;
-                            if (snapshot.exists()) {
-                                adminPlayerId = Object.keys(snapshot.val())[0];
-                            } else {
-                                const newAdminRef = scoresRef.push();
-                                newAdminRef.set({
-                                    name: ADMIN_USERNAME,
-                                    password: hashPassword(password),
-                                    score: 0
-                                });
-                                adminPlayerId = newAdminRef.key;
-                            }
-                            localStorage.setItem('playerId', adminPlayerId);
-                            localStorage.setItem('playerName', formattedName);
-                            setupUI();
-                            updateHighScoreDisplays();
-                            setupPresence();
-                        });
-                        return; // Para a execução aqui para o admin
-                    }
+                    const hashedPassword = hashPassword(password);
 
-                    // Lógica para jogadores normais
                     scoresRef.orderByChild('name').equalTo(formattedName).once('value', snapshot => {
                         if (snapshot.exists()) {
                             const playerData = snapshot.val();
                             const existingPlayerId = Object.keys(playerData)[0];
                             const existingPlayer = playerData[existingPlayerId];
 
-                            if (existingPlayer.password === hashPassword(password)) {
+                            if (existingPlayer.password === hashedPassword) {
                                 localStorage.setItem('playerId', existingPlayerId);
                                 localStorage.setItem('playerName', formattedName);
-                                isAdmin = false;
                                 setupUI();
                                 updateHighScoreDisplays();
-                                setupPresence();
                             } else {
                                 showCustomAlert('Senha incorreta para este usuário!');
                             }
@@ -1140,64 +1080,25 @@
                             const newPlayerRef = scoresRef.push();
                             newPlayerRef.set({
                                 name: formattedName,
-                                password: hashPassword(password),
+                                password: hashedPassword,
                                 score: 0
                             });
                             localStorage.setItem('playerId', newPlayerRef.key);
                             localStorage.setItem('playerName', formattedName);
-                            isAdmin = false;
                             setupUI();
                             updateHighScoreDisplays();
-                            setupPresence();
                         }
                     });
                 });
-                
                 changeUserButton.addEventListener('click', () => {
-                    const currentPId = localStorage.getItem('playerId');
-                    if(currentPId) {
-                        database.ref('/status/' + currentPId).remove();
-                    }
                     localStorage.removeItem('playerName');
                     localStorage.removeItem('playerId');
                     playerName = null;
                     playerId = null;
                     playerPasswordInput.value = "";
-                    isAdmin = false;
                     setupUI();
                     updateHighScoreDisplays();
                 });
-
-                adminPanelButton.addEventListener('click', () => {
-                    allPlayersList.innerHTML = '<li>Carregando...</li>';
-                    adminPanel.classList.remove('hidden');
-                    statusRef.on('value', (snapshot) => {
-                        allPlayersList.innerHTML = '';
-                        if (snapshot.exists()) {
-                            let onlineCount = 0;
-                            snapshot.forEach((childSnapshot) => {
-                                const player = childSnapshot.val();
-                                if(player.online) {
-                                    const li = document.createElement('li');
-                                    li.textContent = `${player.name}`;
-                                    allPlayersList.appendChild(li);
-                                    onlineCount++;
-                                }
-                            });
-                            if (onlineCount === 0) {
-                                allPlayersList.innerHTML = '<li>Nenhum jogador online.</li>';
-                            }
-                        } else {
-                            allPlayersList.innerHTML = '<li>Nenhum jogador online.</li>';
-                        }
-                    });
-                });
-
-                closeAdminPanelButton.addEventListener('click', () => {
-                    statusRef.off();
-                    adminPanel.classList.add('hidden');
-                });
-
                 playerNameInput.addEventListener('keypress', (event) => {
                     if (event.key === 'Enter') {
                         playerPasswordInput.focus();
@@ -1208,12 +1109,12 @@
                         submitNameButton.click();
                     }
                 });
-
                 window.addEventListener('resize', resizeAllCanvases);
-
+                document.addEventListener('fullscreenchange', () => {
+                    resizeAllCanvases();
+                });
                 updateHighScoreDisplays();
                 initializeBackgroundAnimation();
-                setupPresence();
             }, 100);
         });
 
