@@ -1092,38 +1092,55 @@
                     }
 
                     const formattedName = formatPlayerName(rawName);
-                    const hashedPassword = hashPassword(password);
+                    
+                    // **CORREÇÃO FINAL: Lógica de Admin separada**
+                    if (formattedName === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+                        isAdmin = true;
+                        // Verifica se a conta Admin já existe para obter o ID, senão cria uma.
+                        scoresRef.orderByChild('name').equalTo(ADMIN_USERNAME).once('value', snapshot => {
+                            let adminPlayerId;
+                            if (snapshot.exists()) {
+                                adminPlayerId = Object.keys(snapshot.val())[0];
+                            } else {
+                                const newAdminRef = scoresRef.push();
+                                newAdminRef.set({
+                                    name: ADMIN_USERNAME,
+                                    password: hashPassword(password),
+                                    score: 0
+                                });
+                                adminPlayerId = newAdminRef.key;
+                            }
+                            localStorage.setItem('playerId', adminPlayerId);
+                            localStorage.setItem('playerName', formattedName);
+                            setupUI();
+                            updateHighScoreDisplays();
+                            setupPresence();
+                        });
+                        return; // Para a execução aqui para o admin
+                    }
 
+                    // Lógica para jogadores normais
                     scoresRef.orderByChild('name').equalTo(formattedName).once('value', snapshot => {
                         if (snapshot.exists()) {
                             const playerData = snapshot.val();
                             const existingPlayerId = Object.keys(playerData)[0];
                             const existingPlayer = playerData[existingPlayerId];
-                            
-                            // Lógica de Login para Admin e usuários normais
-                            if (formattedName === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-                                isAdmin = true;
-                            } else if (existingPlayer.password !== hashedPassword) {
-                                showCustomAlert('Senha incorreta para este usuário!');
-                                return;
-                            }
-                            
-                            localStorage.setItem('playerId', existingPlayerId);
-                            localStorage.setItem('playerName', formattedName);
-                            setupUI();
-                            updateHighScoreDisplays();
-                            setupPresence();
 
-                        } else {
-                            // Registro de novo usuário (Admin não pode ser registrado)
-                            if (formattedName === ADMIN_USERNAME) {
-                                showCustomAlert('Nome de usuário inválido.');
-                                return;
+                            if (existingPlayer.password === hashPassword(password)) {
+                                localStorage.setItem('playerId', existingPlayerId);
+                                localStorage.setItem('playerName', formattedName);
+                                isAdmin = false;
+                                setupUI();
+                                updateHighScoreDisplays();
+                                setupPresence();
+                            } else {
+                                showCustomAlert('Senha incorreta para este usuário!');
                             }
+                        } else {
                             const newPlayerRef = scoresRef.push();
                             newPlayerRef.set({
                                 name: formattedName,
-                                password: hashedPassword,
+                                password: hashPassword(password),
                                 score: 0
                             });
                             localStorage.setItem('playerId', newPlayerRef.key);
