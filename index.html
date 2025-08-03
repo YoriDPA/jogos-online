@@ -329,9 +329,10 @@
                     <button id="adminPanelButton" class="game-button secondary" style="display: none;">Jogadores Online</button>
                     <button id="changeUserButton" class="game-button secondary">Trocar de Usuário</button>
                 </div>
-                <p class="signature">Criado por YoriDPA</p>
+                <!-- ATUALIZADO: Adicionado ID para controlar visibilidade -->
+                <p class="signature" id="signature">Criado por YoriDPA</p>
 
-                <a href="https://wa.me/5527996162221" target="_blank" class="whatsapp-link">
+                <a href="https://wa.me/5527996162221" target="_blank" class="whatsapp-link" id="whatsappLink">
                     <div class="whatsapp-content">
                         <span>Dúvidas ou sugestões?</span>
                         <i class="fa-brands fa-whatsapp"></i>
@@ -390,9 +391,8 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const scoresRef = database.ref('scores');
-        const statusRef = database.ref('status'); // NOVO: Referência para o status online
+        const statusRef = database.ref('status');
 
-        // ... (o resto do código inicial é o mesmo)
         const gameContainer = document.getElementById('game-container');
         const backgroundCanvas = document.getElementById('backgroundCanvas');
         const bgCtx = backgroundCanvas.getContext('2d');
@@ -501,7 +501,7 @@
 
         function saveTopScores(name, newScore) {
             const currentPId = localStorage.getItem('playerId');
-            if (!currentPId || !name || newScore < 0 || isAdmin) return; // Admin não salva score
+            if (!currentPId || !name || newScore < 0 || isAdmin) return;
             const userScoreRef = database.ref('scores/' + currentPId);
             
             userScoreRef.child('score').once('value', (snapshot) => {
@@ -981,7 +981,6 @@
             });
         }
 
-        // ATUALIZADO: Lógica de presença online
         function setupPresence() {
             const currentPId = localStorage.getItem('playerId');
             const currentPName = localStorage.getItem('playerName');
@@ -1009,24 +1008,35 @@
             });
         }
 
+        // ATUALIZADO: Lógica para mostrar/esconder assinatura e WhatsApp
         function setupUI() {
             playerName = localStorage.getItem('playerName');
             playerId = localStorage.getItem('playerId');
+            const signature = document.getElementById('signature');
+            const whatsappLink = document.getElementById('whatsappLink');
+
             if (playerName && playerId) {
                 nameInputSection.style.display = 'none';
                 loggedInSection.style.display = 'flex';
                 loggedInSection.style.flexDirection = 'column';
                 loggedInSection.style.alignItems = 'center';
+                
                 if (isAdmin) {
                     adminPanelButton.style.display = 'block';
+                    signature.style.display = 'none';
+                    whatsappLink.style.display = 'none';
                 } else {
                     adminPanelButton.style.display = 'none';
+                    signature.style.display = 'block';
+                    whatsappLink.style.display = 'block';
                 }
             } else {
                 nameInputSection.style.display = 'block';
                 loggedInSection.style.display = 'none';
                 adminPanelButton.style.display = 'none';
                 isAdmin = false;
+                signature.style.display = 'block';
+                whatsappLink.style.display = 'block';
             }
         }
 
@@ -1092,7 +1102,7 @@
                         localStorage.setItem('playerName', formattedName);
                         setupUI();
                         updateHighScoreDisplays();
-                        setupPresence(); // Admin também fica online
+                        setupPresence();
                         return;
                     }
 
@@ -1132,7 +1142,7 @@
                 changeUserButton.addEventListener('click', () => {
                     const currentPId = localStorage.getItem('playerId');
                     if(currentPId) {
-                        database.ref('/status/' + currentPId).remove(); // Fica offline ao deslogar
+                        database.ref('/status/' + currentPId).remove();
                     }
                     localStorage.removeItem('playerName');
                     localStorage.removeItem('playerId');
@@ -1147,7 +1157,6 @@
                 adminPanelButton.addEventListener('click', () => {
                     allPlayersList.innerHTML = '<li>Carregando...</li>';
                     adminPanel.classList.remove('hidden');
-                    // Ouve em tempo real
                     statusRef.on('value', (snapshot) => {
                         allPlayersList.innerHTML = '';
                         if (snapshot.exists()) {
@@ -1171,7 +1180,7 @@
                 });
 
                 closeAdminPanelButton.addEventListener('click', () => {
-                    statusRef.off(); // Para de ouvir para economizar recursos
+                    statusRef.off();
                     adminPanel.classList.add('hidden');
                 });
 
@@ -1190,7 +1199,7 @@
 
                 updateHighScoreDisplays();
                 initializeBackgroundAnimation();
-                setupPresence(); // Tenta marcar como online ao carregar a página
+                setupPresence();
             }, 100);
         });
 
