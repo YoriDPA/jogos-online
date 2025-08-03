@@ -436,6 +436,7 @@
         let playerId = localStorage.getItem('playerId') || null;
         let isSoundOn = true;
         let audioReady = false;
+        let isAdmin = false; // Flag para conta admin (imortalidade e atravessar paredes)
 
         const synth = new Tone.FMSynth({
             harmonicity: 8,
@@ -757,6 +758,7 @@
         }
 
         function isGameOver() {
+            if (isAdmin) return false; // Imortalidade para admin - ignora todas as colisões e bordas
             const head = snake[0];
             const numCols = getGridCols();
             const numRows = getGridRows();
@@ -779,6 +781,13 @@
                 case 'down': head.y++; break;
                 case 'left': head.x--; break;
                 case 'right': head.x++; break;
+            }
+            // Para admin, atravessar paredes (wrap-around)
+            if (isAdmin) {
+                const numCols = getGridCols();
+                const numRows = getGridRows();
+                head.x = (head.x + numCols) % numCols; // Wrap horizontal
+                head.y = (head.y + numRows) % numRows; // Wrap vertical
             }
             snake.unshift(head);
             let ateSomething = false;
@@ -893,13 +902,13 @@
             startMovementButton.classList.add('hidden');
             finalScoreDisplay.textContent = score;
 
-            if (playerName) {
+            if (playerName && !isAdmin) { // Não salvar scores para admin
                 saveTopScores(playerName, score);
             }
 
             const playerRankDisplay = document.getElementById('playerRank');
             const currentPId = localStorage.getItem('playerId');
-            if (currentPId) {
+            if (currentPId && !isAdmin) { // Não buscar ranking para admin
                 getPlayerRank(currentPId, (rank) => {
                     if (rank) {
                         playerRankDisplay.textContent = `#${rank}`;
@@ -1062,6 +1071,14 @@
                     const formattedName = formatPlayerName(rawName);
                     const hashedPassword = hashPassword(password);
 
+                    // Verificar se é conta admin (nome = "admin", senha = "admin123")
+                    if (formattedName === 'Admin' && password === 'admin123') {
+                        isAdmin = true;
+                        showCustomAlert('Modo Admin Ativado: Imortalidade e Atravessar Paredes!');
+                    } else {
+                        isAdmin = false;
+                    }
+
                     scoresRef.orderByChild('name').equalTo(formattedName).once('value', snapshot => {
                         if (snapshot.exists()) {
                             const playerData = snapshot.val();
@@ -1095,6 +1112,7 @@
                     localStorage.removeItem('playerId');
                     playerName = null;
                     playerId = null;
+                    isAdmin = false; // Resetar flag admin ao trocar usuário
                     playerPasswordInput.value = "";
                     setupUI();
                     updateHighScoreDisplays();
