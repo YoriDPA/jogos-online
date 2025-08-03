@@ -8,24 +8,303 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
     <style>
-        /* CSS original mantido, com adição de transição suave para score */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Orbitron', sans-serif;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background-color: #000;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #backgroundCanvas {
+            z-index: 1;
+            background-color: #0d0d0d;
+        }
+        #gameCanvas {
+            z-index: 2;
+            background-color: transparent;
+        }
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .start-screen-content, .game-over-content, .pause-screen-content, .admin-panel-content {
+            pointer-events: all;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .game-title {
+            font-size: clamp(2.5rem, 10vw, 5rem);
+            color: #fff;
+            text-shadow: 0 0 10px #3fff3f, 0 0 20px #3fff3f, 0 0 40px #3fff3f;
+            margin-bottom: 40px;
+        }
+        .game-button {
+            background-color: #3fff3f;
+            color: #000;
+            padding: 15px 40px;
+            border: 2px solid #3fff3f;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 20px rgba(63, 255, 63, 0.7);
+            margin: 10px 0;
+        }
+        .game-button:hover {
+            background-color: #fff;
+            color: #3fff3f;
+            box-shadow: 0 0 25px #fff;
+        }
+        .game-button.secondary {
+            background-color: transparent;
+            color: #3fff3f;
+            font-size: 0.9rem;
+            padding: 8px 15px;
+            margin-top: 20px;
+            box-shadow: none;
+        }
+        .game-button.secondary:hover {
+            background-color: #3fff3f;
+            color: #000;
+        }
+        .game-over-dialog, .pause-dialog, .admin-dialog {
+            background-color: rgba(0, 0, 0, 0.85);
+            padding: 30px 40px;
+            border-radius: 15px;
+            border: 2px solid #3fff3f;
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+        }
+        .game-over-dialog h1, .pause-dialog h1, .admin-dialog h1 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #3fff3f;
+        }
+        .final-score {
+            font-size: 1.8rem;
+            color: #ffcc00;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .player-rank {
+            font-size: 1.5rem;
+            color: #55aaff;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .score-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 1.2rem;
+            color: #fff;
+            text-shadow: 0 0 5px #3fff3f, 0 0 10px #3fff3f;
+            opacity: 0.8;
+            pointer-events: none;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            border-radius: 5px;
+            z-index: 3;
+        }
         .score-display.update {
             transform: scale(1.2);
             opacity: 1;
             text-shadow: 0 0 8px #ffcc00, 0 0 15px #ccff00;
-            transition: all 0.3s ease;
         }
-        /* Adicionado: Estilo para mensagens de speed up/down */
-        .powerup-message.speedup { color: #00ff00; } /* Verde para aumento */
-        .powerup-message.speeddown { color: #ff0000; } /* Vermelho para diminuição */
+        .powerup-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+            pointer-events: none;
+            animation: fadeOut 3s ease forwards;
+            z-index: 9;
+        }
+        .powerup-message.bonus { color: #ffcc00; }
+        .powerup-message.speedup { color: #ff5555; }
+        .powerup-message.slowdown { color: #55aaff; }
+        @keyframes fadeOut {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+        }
+        .ranking-display {
+            font-size: 1.2rem;
+            color: #ffcc00;
+            text-shadow: 0 0 5px #ffcc00, 0 0 10px #ccff00;
+            margin-bottom: 20px;
+        }
+        .sound-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 12;
+            background: transparent;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+        }
+        .sound-toggle i {
+            font-size: 1.2rem;
+            color: #fff;
+            text-shadow: 0 0 5px #3fff3f, 0 0 10px #3fff3f;
+            transition: opacity 0.3s ease, transform 0.2s ease;
+        }
+        .sound-toggle i:hover {
+            transform: scale(1.1);
+        }
+        .sound-toggle i.muted {
+            opacity: 0.3;
+        }
+        .signature {
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 1px;
+        }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        .dropdown-button {
+            background-color: #3fff3f;
+            color: #000;
+            padding: 10px 20px;
+            border: 2px solid #3fff3f;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 10px rgba(63, 255, 63, 0.7);
+        }
+        .dropdown-button:hover {
+            background-color: #fff;
+            color: #3fff3f;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.85);
+            min-width: 200px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+            z-index: 1;
+            border: 2px solid #3fff3f;
+            border-radius: 10px;
+            padding: 10px;
+            text-align: left;
+        }
+        .dropdown-content li {
+            color: #ffcc00;
+            padding: 5px 0;
+            font-size: 1rem;
+        }
+        .dropdown-content.show {
+            display: block;
+        }
+        .name-input-container {
+            margin: 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .player-input {
+            background-color: rgba(0, 0, 0, 0.5);
+            color: #fff;
+            border: 2px solid #3fff3f;
+            border-radius: 5px;
+            padding: 5px;
+            font-size: 1rem;
+            text-align: center;
+            width: 200px;
+        }
+        #submitNameButton {
+            background-color: #3fff3f;
+            color: #000;
+            padding: 10px 15px;
+            border: 2px solid #3fff3f;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 10px;
+        }
+        #submitNameButton:hover {
+            background-color: #fff;
+            color: #3fff3f;
+        }
+        .whatsapp-link {
+            margin-top: 25px;
+            text-decoration: none;
+            color: #3fff3f;
+            transition: all 0.2s ease;
+            display: inline-block;
+        }
+        .whatsapp-link:hover {
+            transform: scale(1.05);
+            text-shadow: 0 0 10px #3fff3f;
+        }
+        .whatsapp-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-size: 1rem;
+        }
+        .whatsapp-content i {
+            font-size: 1.5rem;
+        }
+        /* Estilos do Painel Admin */
+        #allPlayersList {
+            list-style: none;
+            padding: 0;
+            max-height: 300px;
+            overflow-y: auto;
+            text-align: left;
+            color: #fff;
+        }
+        #allPlayersList li {
+            padding: 5px;
+            border-bottom: 1px solid #3fff3f;
+        }
     </style>
 </head>
 <body>
-    <!-- HTML original mantido, sem mudanças estruturais -->
     <div id="game-container">
         <canvas id="backgroundCanvas"></canvas>
         <canvas id="gameCanvas"></canvas>
@@ -47,9 +326,11 @@
                 </div>
                 <div id="loggedInSection" style="display: none; text-align: center;">
                     <button id="startButton" class="game-button">Iniciar</button>
+                    <button id="adminPanelButton" class="game-button secondary" style="display: none;">Jogadores Online</button>
                     <button id="changeUserButton" class="game-button secondary">Trocar de Usuário</button>
                 </div>
                 <p class="signature">Criado por YoriDPA</p>
+
                 <a href="https://wa.me/5527996162221" target="_blank" class="whatsapp-link">
                     <div class="whatsapp-content">
                         <span>Dúvidas ou sugestões?</span>
@@ -62,6 +343,7 @@
                 <div class="game-over-dialog">
                     <h1>FIM DE JOGO</h1>
                     <p class="final-score">Score: <span id="finalScore"></span></p>
+                    <p class="player-rank">Sua Posição: <span id="playerRank">--</span></p>
                     <p>Recorde Global: <span id="gameOverHighScore"></span></p>
                     <button id="restartButton" class="game-button">Jogar Novamente</button>
                     <button id="backToMenuButton" class="game-button">Voltar ao Menu</button>
@@ -72,6 +354,14 @@
                 <div class="pause-dialog">
                     <h1>PAUSADO</h1>
                     <button id="resumeButton" class="game-button">Continuar</button>
+                </div>
+            </div>
+            
+            <div id="adminPanel" class="admin-panel-content hidden">
+                <div class="admin-dialog">
+                    <h1>Jogadores Online</h1>
+                    <ul id="allPlayersList"><li>Carregando...</li></ul>
+                    <button id="closeAdminPanelButton" class="game-button secondary">Fechar</button>
                 </div>
             </div>
         </div>
@@ -86,7 +376,6 @@
     </div>
 
     <script>
-        // Config Firebase original mantida
         const firebaseConfig = {
             apiKey: "AIzaSyAiSenlXeewlgk5QIAsDsdnUzDX4oxH_jY",
             authDomain: "snakeonline-yoridpa.firebaseapp.com",
@@ -101,8 +390,9 @@
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const scoresRef = database.ref('scores');
+        const statusRef = database.ref('status'); // NOVO: Referência para o status online
 
-        // Elementos DOM originais mantidos
+        // ... (o resto do código inicial é o mesmo)
         const gameContainer = document.getElementById('game-container');
         const backgroundCanvas = document.getElementById('backgroundCanvas');
         const bgCtx = backgroundCanvas.getContext('2d');
@@ -132,11 +422,20 @@
         const nameInputSection = document.getElementById('nameInputSection');
         const loggedInSection = document.getElementById('loggedInSection');
         const changeUserButton = document.getElementById('changeUserButton');
+        
+        const adminPanel = document.getElementById('adminPanel');
+        const adminPanelButton = document.getElementById('adminPanelButton');
+        const closeAdminPanelButton = document.getElementById('closeAdminPanelButton');
+        const allPlayersList = document.getElementById('allPlayersList');
+
 
         let playerName = localStorage.getItem('playerName') || null;
         let playerId = localStorage.getItem('playerId') || null;
         let isSoundOn = true;
         let audioReady = false;
+        let isAdmin = false;
+        const ADMIN_USERNAME = "Admin";
+        const ADMIN_PASSWORD = "88645912";
 
         const synth = new Tone.FMSynth({
             harmonicity: 8,
@@ -161,85 +460,66 @@
                         synth.triggerAttackRelease("E3", "8n", now + 0.1);
                         synth.triggerAttackRelease("C3", "8n", now + 0.2);
                         break;
-                    case 'hunger': synth.triggerAttackRelease("C3", "8n", now); break;
                 }
-            } catch (e) { console.error("Erro ao tocar som:", e); }
+            } catch (e) { console.error("Erro ao tocar som com Tone.js:", e); }
         }
 
         async function unlockAudio() {
             if (audioReady) return;
             await Tone.start();
             audioReady = true;
-            console.log("Áudio pronto!");
+            console.log("Contexto de áudio desbloqueado e pronto!");
         }
 
         const gridSize = 20;
-        let gameState = { // Novo: Encapsulamento do estado do jogo
-            snake: [],
-            food: null,
-            powerUp: null,
-            direction: null,
-            score: 0,
-            speed: 150,
-            changingDirection: false,
-            isPaused: false,
-            foodEatenCount: 0,
-            lastFoodTime: Date.now(),
-            hungerTimer: null,
-            powerUpTimer: null,
-            lastFrameTime: 0
-        };
-        const HUNGER_TIMEOUT = 20000;
+        let snake, food, powerUp, direction, score, speed, gameInterval, changingDirection;
+        let isPaused = false;
+        
+        let powerUpTimer = null;
         const POWERUP_LIFESPAN = 7000;
         const POWERUP_SPAWN_INTERVAL = 10000;
-        let animationFrameId = null; // Para requestAnimationFrame
 
         function loadTopScores(callback) {
-            try {
-                scoresRef.orderByChild('score').limitToLast(10).once('value', (snapshot) => {
-                    const scores = [];
-                    if (snapshot.exists()) {
-                        snapshot.forEach((childSnapshot) => {
-                            scores.push({
-                                name: childSnapshot.val().name,
-                                score: childSnapshot.val().score
-                            });
+            scoresRef.orderByChild('score').limitToLast(10).once('value', (snapshot) => {
+                const scores = [];
+                if (snapshot.exists()) {
+                    snapshot.forEach((childSnapshot) => {
+                        scores.push({
+                            name: childSnapshot.val().name,
+                            score: childSnapshot.val().score
                         });
-                        callback(scores.reverse());
-                    } else {
-                        callback([]);
-                    }
-                }, (error) => {
-                    console.error("Erro Firebase:", error);
-                    topScoresList.innerHTML = '<li>Erro ao carregar.</li>';
-                });
-            } catch (e) {
-                console.error("Erro ao carregar scores:", e);
-            }
+                    });
+                    callback(scores.reverse());
+                } else {
+                    callback([]);
+                }
+            }, (error) => {
+                console.error("Erro ao carregar scores do Firebase:", error);
+                topScoresList.innerHTML = '<li>Erro ao carregar.</li>';
+            });
         }
 
         function saveTopScores(name, newScore) {
             const currentPId = localStorage.getItem('playerId');
-            if (!currentPId || !name || newScore < 0) return;
+            if (!currentPId || !name || newScore < 0 || isAdmin) return; // Admin não salva score
             const userScoreRef = database.ref('scores/' + currentPId);
             
-            try {
-                userScoreRef.child('score').once('value', (snapshot) => {
-                    const currentScore = snapshot.val() || 0;
-                    if (newScore > currentScore) {
-                        userScoreRef.update({ score: newScore });
-                    }
-                });
-            } catch (e) {
-                console.error("Erro ao salvar score:", e);
-            }
+            userScoreRef.child('score').once('value', (snapshot) => {
+                const currentScore = snapshot.val() || 0;
+                if (newScore > currentScore) {
+                    userScoreRef.update({ score: newScore });
+                }
+            });
         }
-
+        
         function updateHighScoreDisplays() {
             const highScoreLabel = document.getElementById('highScoreLabel');
+
             loadTopScores((topScores) => {
                 const globalHighScore = topScores.length > 0 ? topScores[0].score : 0;
+                
                 gameOverHighScoreDisplay.textContent = globalHighScore;
+
                 topScoresList.innerHTML = '';
                 if (topScores.length > 0) {
                     topScores.forEach((entry, index) => {
@@ -250,8 +530,9 @@
                 } else {
                     topScoresList.innerHTML = '<li>Nenhum score ainda.</li>';
                 }
+
                 const currentPId = localStorage.getItem('playerId');
-                if (currentPId) {
+                if (currentPId && !isAdmin) {
                     const userScoreRef = database.ref('scores/' + currentPId + '/score');
                     userScoreRef.once('value', (snapshot) => {
                         const userBestScore = snapshot.val() || 0;
@@ -261,6 +542,32 @@
                 } else {
                     highScoreLabel.textContent = 'Recorde Global';
                     startHighScoreDisplay.textContent = globalHighScore;
+                }
+            });
+        }
+
+        function getPlayerRank(playerId, callback) {
+            scoresRef.orderByChild('score').once('value', (snapshot) => {
+                if (!snapshot.exists()) {
+                    callback(null);
+                    return;
+                }
+
+                const scores = [];
+                snapshot.forEach((childSnapshot) => {
+                    scores.push({
+                        id: childSnapshot.key,
+                        score: childSnapshot.val().score
+                    });
+                });
+
+                scores.sort((a, b) => b.score - a.score);
+                const rank = scores.findIndex(p => p.id === playerId) + 1;
+
+                if (rank > 0) {
+                    callback(rank);
+                } else {
+                    callback(null);
                 }
             });
         }
@@ -280,7 +587,7 @@
 
         function drawBackgroundGrid() {
             bgCtx.clearRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
-            bgCtx.fillStyle = 'rgba(63, 255, 63, 0.02)';
+            bgCtx.fillStyle = 'rgba(63, 255, 63, 0.05)';
             const cols = getGridCols();
             const rows = getGridRows();
             for (let x = 0; x < cols; x++) {
@@ -317,117 +624,95 @@
             gameCtx.fill();
             gameCtx.restore();
         }
-
+        
         function drawFood() {
-            if (!gameState.food) return;
+            if (!food) return;
             const size = gridSize * 0.8;
             gameCtx.fillStyle = '#ff3333';
-            const cx = gameState.food.x * gridSize + gridSize / 2;
-            const cy = gameState.food.y * gridSize + gridSize / 2;
+            const cx = food.x * gridSize + gridSize / 2;
+            const cy = food.y * gridSize + gridSize / 2;
             gameCtx.beginPath();
             gameCtx.arc(cx, cy, size / 2, 0, 2 * Math.PI);
             gameCtx.fill();
         }
 
         function drawPowerUp() {
-            if (!gameState.powerUp) return;
-            const baseSize = gridSize * 0.8;
-            const pulse = Math.sin(Date.now() / 500) * 0.1 + 1;
-            const size = baseSize * pulse;
+            if (!powerUp) return;
+            const size = gridSize * 0.8;
             let label = '';
-            switch (gameState.powerUp.type) {
+            switch (powerUp.type) {
                 case 'bonus': gameCtx.fillStyle = '#ffcc00'; label = '+5'; break;
-                case 'speedchange': gameCtx.fillStyle = '#ffff00'; break;
+                case 'speedup': gameCtx.fillStyle = '#ff5555'; label = '↑'; break;
+                case 'slowdown': gameCtx.fillStyle = '#55aaff'; label = '↓'; break;
             }
-            const timeSinceSpawn = Date.now() - gameState.powerUp.spawnTime;
+            const timeSinceSpawn = Date.now() - powerUp.spawnTime;
             let opacity = 1;
             if (timeSinceSpawn > POWERUP_LIFESPAN - 3000) {
                 opacity = (Math.sin(Date.now() / 150) + 1) / 2;
             }
-            const cx = gameState.powerUp.x * gridSize + gridSize / 2;
-            const cy = gameState.powerUp.y * gridSize + gridSize / 2;
-            gameCtx.save();
-            gameCtx.translate(cx, cy);
-            gameCtx.rotate((Date.now() / 1000) % (2 * Math.PI));
-            gameCtx.translate(-cx, -cy);
-            drawStar(gameState.powerUp.x, gameState.powerUp.y, size, opacity);
-            gameCtx.restore();
-            if (label) {
-                gameCtx.globalAlpha = opacity;
-                gameCtx.fillStyle = '#000';
-                gameCtx.font = 'bold 10px Arial';
-                gameCtx.textAlign = 'center';
-                gameCtx.textBaseline = 'middle';
-                gameCtx.fillText(label, cx, cy);
-                gameCtx.globalAlpha = 1;
-            }
+            drawStar(powerUp.x, powerUp.y, size, opacity);
+            gameCtx.globalAlpha = opacity;
+            gameCtx.fillStyle = '#000';
+            gameCtx.font = 'bold 10px Arial';
+            gameCtx.textAlign = 'center';
+            gameCtx.textBaseline = 'middle';
+            gameCtx.fillText(label, powerUp.x * gridSize + gridSize / 2, powerUp.y * gridSize + gridSize / 2);
+            gameCtx.globalAlpha = 1;
         }
 
-        function showPowerUpMessage(type, subType = null) {
+        function showPowerUpMessage(type) {
             powerUpMessage.className = 'powerup-message';
             powerUpMessage.classList.remove('hidden');
             switch (type) {
                 case 'bonus': powerUpMessage.textContent = 'Bônus: +5 Pontos!'; powerUpMessage.classList.add('bonus'); break;
-                case 'speedchange':
-                    if (subType === 'up') {
-                        powerUpMessage.textContent = 'Velocidade Aumentada!'; 
-                        powerUpMessage.classList.add('speedup');
-                    } else {
-                        powerUpMessage.textContent = 'Velocidade Diminuída!'; 
-                        powerUpMessage.classList.add('speeddown');
-                    }
-                    break;
-                case 'levelup': powerUpMessage.textContent = 'Velocidade Máxima Aumentada!'; powerUpMessage.classList.add('levelup'); break;
-                case 'hunger': powerUpMessage.textContent = 'Fome! A cobrinha está encolhendo!'; powerUpMessage.classList.add('hunger'); break;
+                case 'speedup': powerUpMessage.textContent = 'Velocidade Aumentada!'; powerUpMessage.classList.add('speedup'); break;
+                case 'slowdown': powerUpMessage.textContent = 'Velocidade Reduzida!'; powerUpMessage.classList.add('slowdown'); break;
             }
             setTimeout(() => powerUpMessage.classList.add('hidden'), 3000);
         }
-
+        
         function initializeGame() {
             const numCols = getGridCols();
             const numRows = getGridRows();
-            gameState.snake = [{ x: Math.floor(numCols / 2), y: Math.floor(numRows / 2) }];
-            gameState.powerUp = null;
+            snake = [{ x: Math.floor(numCols / 2), y: Math.floor(numRows / 2) }];
+            powerUp = null;
             placeFood();
-            gameState.direction = null;
-            gameState.score = 0;
-            gameState.speed = 150;
-            gameState.changingDirection = false;
-            gameState.isPaused = false;
-            gameState.foodEatenCount = 0;
-            gameState.lastFoodTime = Date.now();
-            scoreDisplay.textContent = gameState.score;
+            direction = null;
+            score = 0;
+            speed = 150;
+            changingDirection = false;
+            isPaused = false;
+            scoreDisplay.textContent = score;
             updateHighScoreDisplays();
             startMovementButton.classList.remove('hidden');
-            if (gameState.powerUpTimer) clearInterval(gameState.powerUpTimer);
-            gameState.powerUpTimer = setInterval(trySpawningPowerUp, POWERUP_SPAWN_INTERVAL);
-            if (gameState.hungerTimer) clearInterval(gameState.hungerTimer);
-            gameState.hungerTimer = setInterval(checkHunger, 1000);
+            if (powerUpTimer) clearInterval(powerUpTimer);
+            powerUpTimer = setInterval(trySpawningPowerUp, POWERUP_SPAWN_INTERVAL);
         }
 
         function placeFood() {
             const numCols = getGridCols();
             const numRows = getGridRows();
             do {
-                gameState.food = {
+                food = {
                     x: Math.floor(Math.random() * numCols),
                     y: Math.floor(Math.random() * numRows)
                 };
             } while (
-                gameState.snake.some(segment => segment.x === gameState.food.x && segment.y === gameState.food.y) ||
-                (gameState.powerUp && gameState.powerUp.x === gameState.food.x && gameState.powerUp.y === gameState.food.y)
+                snake.some(segment => segment.x === food.x && segment.y === food.y) ||
+                (powerUp && powerUp.x === food.x && powerUp.y === food.y)
             );
         }
 
         function trySpawningPowerUp() {
-            if (gameState.powerUp) return;
+            if (powerUp) return;
             const numCols = getGridCols();
             const numRows = getGridRows();
             let newPowerUp;
             const randomType = Math.random();
             let type;
             if (randomType < 0.4) type = 'bonus';
-            else type = 'speedchange';
+            else if (randomType < 0.8) type = 'speedup';
+            else type = 'slowdown';
             do {
                 newPowerUp = {
                     x: Math.floor(Math.random() * numCols),
@@ -436,131 +721,112 @@
                     spawnTime: Date.now()
                 };
             } while (
-                gameState.snake.some(segment => segment.x === newPowerUp.x && segment.y === newPowerUp.y) ||
-                (gameState.food && gameState.food.x === newPowerUp.x && gameState.food.y === newPowerUp.y)
+                snake.some(segment => segment.x === newPowerUp.x && segment.y === newPowerUp.y) ||
+                (food && food.x === newPowerUp.x && food.y === newPowerUp.y)
             );
-            gameState.powerUp = newPowerUp;
+            powerUp = newPowerUp;
         }
 
-        function checkHunger() {
-            if (gameState.isPaused || !animationFrameId) return;
-            const timeSinceLastFood = Date.now() - gameState.lastFoodTime;
-            if (timeSinceLastFood > HUNGER_TIMEOUT) {
-                if (gameState.snake.length > 1) {
-                    gameState.snake.pop();
-                    playSound('hunger');
-                    showPowerUpMessage('hunger');
-                } else {
-                    // Adicionado: Aviso antes de game over se length == 1
-                    showPowerUpMessage('hunger');
-                    if (isGameOver()) stopGame();
-                }
-            }
-        }
-
-        function gameLoop(currentTime) {
-            animationFrameId = requestAnimationFrame(gameLoop); // Loop com RAF
-            if (gameState.isPaused) return;
-            const elapsed = currentTime - gameState.lastFrameTime;
-            if (elapsed < gameState.speed) return; // Controla speed via tempo
-            gameState.lastFrameTime = currentTime;
-
-            if (gameState.powerUp && (Date.now() - gameState.powerUp.spawnTime > POWERUP_LIFESPAN)) {
-                gameState.powerUp = null;
+        function gameLoop() {
+            if (isPaused) return;
+            if (powerUp && (Date.now() - powerUp.spawnTime > POWERUP_LIFESPAN)) {
+                powerUp = null;
             }
             moveSnake();
             if (isGameOver()) {
                 stopGame();
                 return;
             }
-            gameState.changingDirection = false;
+            changingDirection = false;
             drawFrame();
         }
 
         function drawFrame() {
-            gameCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height); // Nota: Para otimização futura, limpe só áreas mudadas
+            gameCtx.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
             drawFood();
             drawPowerUp();
-            gameState.snake.forEach((segment, index) => {
+            snake.forEach((segment, index) => {
                 const color = index === 0 ? '#3fff3f' : '#2cae2c';
                 drawOnGameCanvas(segment.x, segment.y, color);
             });
         }
 
         function isGameOver() {
-            const head = gameState.snake[0];
-            const numCols = getGridCols();
-            const numRows = getGridRows();
-            if (head.x < 0 || head.x >= numCols || head.y < 0 || head.y >= numRows) {
-                return true;
-            }
-            for (let i = 1; i < gameState.snake.length; i++) {
-                if (head.x === gameState.snake[i].x && head.y === gameState.snake[i].y) {
-                    return true;
+            const head = snake[0];
+            
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    return !isAdmin; 
                 }
             }
+
             return false;
         }
 
         function moveSnake() {
-            if (!gameState.direction) return;
-            const head = { ...gameState.snake[0] };
-            switch (gameState.direction) {
+            if (!direction) return;
+            const head = { ...snake[0] };
+            switch (direction) {
                 case 'up': head.y--; break;
                 case 'down': head.y++; break;
                 case 'left': head.x--; break;
                 case 'right': head.x++; break;
             }
-            gameState.snake.unshift(head);
-            let ateSomething = false;
-            if (gameState.food && head.x === gameState.food.x && head.y === gameState.food.y) {
-                ateSomething = true;
-                gameState.score += 1;
-                playSound('eat');
-                gameState.foodEatenCount += 1;
-                gameState.lastFoodTime = Date.now();
-                placeFood();
-                if (gameState.foodEatenCount % 100 === 0) {
-                    gameState.speed = Math.max(50, gameState.speed - 10);
-                    showPowerUpMessage('levelup');
+
+            if (isAdmin) {
+                const numCols = getGridCols();
+                const numRows = getGridRows();
+                if (head.x < 0) head.x = numCols - 1;
+                if (head.x >= numCols) head.x = 0;
+                if (head.y < 0) head.y = numRows - 1;
+                if (head.y >= numRows) head.y = 0;
+            } else {
+                const numCols = getGridCols();
+                const numRows = getGridRows();
+                if (head.x < 0 || head.x >= numCols || head.y < 0 || head.y >= numRows) {
+                    stopGame();
+                    return;
                 }
             }
-            if (gameState.powerUp && head.x === gameState.powerUp.x && head.y === gameState.powerUp.y) {
+
+            snake.unshift(head);
+            let ateSomething = false;
+            if (food && head.x === food.x && head.y === food.y) {
                 ateSomething = true;
-                switch (gameState.powerUp.type) {
-                    case 'bonus': 
-                        gameState.score += 5; 
-                        playSound('powerUp'); 
-                        showPowerUpMessage('bonus'); 
-                        break;
-                    case 'speedchange':
-                        const isIncrease = Math.random() > 0.5;
-                        if (isIncrease) {
-                            gameState.speed = Math.max(50, gameState.speed - 20);
-                            showPowerUpMessage('speedchange', 'up'); // Feedback específico
-                        } else {
-                            gameState.speed = Math.min(300, gameState.speed + 20);
-                            showPowerUpMessage('speedchange', 'down');
-                        }
-                        playSound('powerUp');
-                        break;
+                score += 1;
+                playSound('eat');
+                placeFood();
+            }
+            if (powerUp && head.x === powerUp.x && head.y === powerUp.y) {
+                ateSomething = true;
+                switch (powerUp.type) {
+                    case 'bonus': score += 5; playSound('powerUp'); showPowerUpMessage('bonus'); break;
+                    case 'speedup': speed = Math.max(50, speed - 20); playSound('powerUp'); showPowerUpMessage('speedup'); break;
+                    case 'slowdown': speed = Math.min(300, speed + 20); playSound('powerUp'); showPowerUpMessage('slowdown'); break;
                 }
-                gameState.powerUp = null;
+                clearInterval(gameInterval);
+                gameInterval = setInterval(gameLoop, speed);
+                powerUp = null;
             }
             if (ateSomething) {
-                scoreDisplay.textContent = gameState.score;
+                if (food && head.x === food.x && head.y === food.y) {
+                    speed = Math.max(50, speed - 2);
+                    clearInterval(gameInterval);
+                    gameInterval = setInterval(gameLoop, speed);
+                }
+                scoreDisplay.textContent = score;
                 scoreDisplay.classList.add('update');
                 setTimeout(() => scoreDisplay.classList.remove('update'), 300);
             } else {
-                gameState.snake.pop();
+                snake.pop();
             }
         }
 
         function setDirection(newDirection) {
             const opposite = { 'up': 'down', 'down': 'up', 'left': 'right', 'right': 'left' };
-            if (gameState.changingDirection || newDirection === opposite[gameState.direction]) return;
-            gameState.direction = newDirection;
-            gameState.changingDirection = true;
+            if (changingDirection || newDirection === opposite[direction]) return;
+            direction = newDirection;
+            changingDirection = true;
         }
 
         function handleKeyDown(event) {
@@ -569,27 +835,24 @@
                 case 'ArrowDown': case 's': setDirection('down'); break;
                 case 'ArrowLeft': case 'a': setDirection('left'); break;
                 case 'ArrowRight': case 'd': setDirection('right'); break;
-                case 'p': case 'P': if(animationFrameId) togglePause(); break;
+                case 'p': case 'P': if(gameInterval) togglePause(); break;
             }
         }
 
         function togglePause() {
-            gameState.isPaused = !gameState.isPaused;
-            if (gameState.isPaused) {
-                cancelAnimationFrame(animationFrameId);
-                clearInterval(gameState.powerUpTimer);
-                clearInterval(gameState.hungerTimer);
+            isPaused = !isPaused;
+            if (isPaused) {
+                clearInterval(gameInterval);
+                clearInterval(powerUpTimer);
                 pauseScreen.classList.remove('hidden');
                 playSound('pause');
             } else {
                 pauseScreen.classList.add('hidden');
-                gameState.lastFrameTime = performance.now(); // Reseta tempo
-                animationFrameId = requestAnimationFrame(gameLoop);
-                gameState.powerUpTimer = setInterval(trySpawningPowerUp, POWERUP_SPAWN_INTERVAL);
-                gameState.hungerTimer = setInterval(checkHunger, 1000);
+                gameInterval = setInterval(gameLoop, speed);
+                powerUpTimer = setInterval(trySpawningPowerUp, POWERUP_SPAWN_INTERVAL);
             }
         }
-
+        
         let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
         function handleTouchStart(event) {
             event.preventDefault();
@@ -614,7 +877,11 @@
 
         function runGame() {
             unlockAudio();
-            resizeAllCanvases();
+            if (animationFrameId) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+            resizeAllCanvases(); 
             startScreen.classList.add('hidden');
             gameOverScreen.classList.add('hidden');
             scoreDisplay.classList.remove('hidden');
@@ -622,29 +889,41 @@
             drawBackgroundGrid();
             initializeGame();
             addEventListeners();
-            gameState.lastFrameTime = performance.now();
-            animationFrameId = requestAnimationFrame(gameLoop); // Inicia com RAF
         }
 
         function stopGame() {
-            cancelAnimationFrame(animationFrameId);
-            clearInterval(gameState.powerUpTimer);
-            clearInterval(gameState.hungerTimer);
-            animationFrameId = null;
-            gameState.powerUpTimer = null;
-            gameState.hungerTimer = null;
+            clearInterval(gameInterval);
+            clearInterval(powerUpTimer);
+            gameInterval = null;
+            powerUpTimer = null;
             removeEventListeners();
             gameOverScreen.classList.remove('hidden');
             scoreDisplay.classList.add('hidden');
             startMovementButton.classList.add('hidden');
-            finalScoreDisplay.textContent = gameState.score;
+            finalScoreDisplay.textContent = score;
+
             if (playerName) {
-                saveTopScores(playerName, gameState.score);
+                saveTopScores(playerName, score);
             }
+
+            const playerRankDisplay = document.getElementById('playerRank');
+            const currentPId = localStorage.getItem('playerId');
+            if (currentPId) {
+                getPlayerRank(currentPId, (rank) => {
+                    if (rank) {
+                        playerRankDisplay.textContent = `#${rank}`;
+                    } else {
+                        playerRankDisplay.textContent = '--';
+                    }
+                });
+            } else {
+                 playerRankDisplay.textContent = 'N/A';
+            }
+
             updateHighScoreDisplays();
             playSound('gameOver');
         }
-
+        
         function addEventListeners() {
             document.addEventListener('keydown', handleKeyDown);
             gameCanvas.addEventListener('touchstart', handleTouchStart, { passive: false });
@@ -656,7 +935,7 @@
             gameCanvas.removeEventListener('touchend', handleTouchEnd);
         }
 
-        let demoSnake, demoDirection;
+        let demoSnake, demoDirection, animationFrameId;
         let lastDemoFrameTime = 0;
         const demoFrameInterval = 100;
 
@@ -672,9 +951,12 @@
         }
 
         function animateBackground(currentTime) {
+            if (!animationFrameId) return;
             animationFrameId = requestAnimationFrame(animateBackground);
             const elapsed = currentTime - lastDemoFrameTime;
-            if (elapsed < demoFrameInterval) return;
+            if (elapsed < demoFrameInterval) {
+                return;
+            }
             lastDemoFrameTime = currentTime;
             const numCols = getGridCols();
             const numRows = getGridRows();
@@ -683,15 +965,12 @@
             else if (demoDirection === 'down' && head.y >= numRows - 1) demoDirection = 'left';
             else if (demoDirection === 'left' && head.x <= 0) demoDirection = 'up';
             else if (demoDirection === 'up' && head.y <= 0) demoDirection = 'right';
-            switch (demoDirection) {
+            switch (direction) {
                 case 'up': head.y--; break;
                 case 'down': head.y++; break;
                 case 'left': head.x--; break;
                 case 'right': head.x++; break;
             }
-            // Adicionado: Wrap-around para demo não "morrer"
-            head.x = (head.x + numCols) % numCols;
-            head.y = (head.y + numRows) % numRows;
             demoSnake.unshift(head);
             demoSnake.pop();
             bgCtx.clearRect(0, 0, backgroundCanvas.width, backgroundCanvas.height);
@@ -699,6 +978,34 @@
             demoSnake.forEach((segment, index) => {
                 bgCtx.fillStyle = index === 0 ? 'rgba(63, 255, 63, 0.5)' : 'rgba(63, 255, 63, 0.3)';
                 bgCtx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+            });
+        }
+
+        // ATUALIZADO: Lógica de presença online
+        function setupPresence() {
+            const currentPId = localStorage.getItem('playerId');
+            const currentPName = localStorage.getItem('playerName');
+            if (!currentPId || !currentPName) return;
+
+            const userStatusRef = database.ref('/status/' + currentPId);
+            const isOnline = {
+                name: currentPName,
+                online: true,
+                last_changed: firebase.database.ServerValue.TIMESTAMP,
+            };
+            const isOffline = {
+                name: currentPName,
+                online: false,
+                last_changed: firebase.database.ServerValue.TIMESTAMP,
+            };
+
+            database.ref('.info/connected').on('value', (snapshot) => {
+                if (snapshot.val() === false) {
+                    return;
+                }
+                userStatusRef.onDisconnect().set(isOffline).then(() => {
+                    userStatusRef.set(isOnline);
+                });
             });
         }
 
@@ -710,25 +1017,25 @@
                 loggedInSection.style.display = 'flex';
                 loggedInSection.style.flexDirection = 'column';
                 loggedInSection.style.alignItems = 'center';
+                if (isAdmin) {
+                    adminPanelButton.style.display = 'block';
+                } else {
+                    adminPanelButton.style.display = 'none';
+                }
             } else {
                 nameInputSection.style.display = 'block';
                 loggedInSection.style.display = 'none';
+                adminPanelButton.style.display = 'none';
+                isAdmin = false;
             }
         }
 
         function formatPlayerName(name) {
             return name.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
         }
-
+        
         function hashPassword(password) {
-            // Melhorado: Hash simples (não perfeito, mas melhor que btoa). Use SHA em produção.
-            let hash = 0;
-            for (let i = 0; i < password.length; i++) {
-                const char = password.charCodeAt(i);
-                hash = ((hash << 5) - hash) + char;
-                hash = hash & hash; // Converte para 32bit int
-            }
-            return hash.toString(36); // Converte para base36
+            return btoa(password);
         }
 
         window.addEventListener('load', () => {
@@ -747,8 +1054,10 @@
                 });
 
                 startMovementButton.addEventListener('click', () => {
-                    if (!gameState.direction) {
-                        gameState.direction = 'right';
+                    if (!direction) {
+                        direction = 'right';
+                        if (gameInterval) clearInterval(gameInterval);
+                        gameInterval = setInterval(gameLoop, speed);
                         startMovementButton.classList.add('hidden');
                     }
                 });
@@ -777,48 +1086,93 @@
                     const formattedName = formatPlayerName(rawName);
                     const hashedPassword = hashPassword(password);
 
-                    try {
-                        scoresRef.orderByChild('name').equalTo(formattedName).once('value', snapshot => {
-                            if (snapshot.exists()) {
-                                const playerData = snapshot.val();
-                                const existingPlayerId = Object.keys(playerData)[0];
-                                const existingPlayer = playerData[existingPlayerId];
+                    if (formattedName === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+                        isAdmin = true;
+                        localStorage.setItem('playerId', 'ADMIN_ID');
+                        localStorage.setItem('playerName', formattedName);
+                        setupUI();
+                        updateHighScoreDisplays();
+                        setupPresence(); // Admin também fica online
+                        return;
+                    }
 
-                                if (existingPlayer.password === hashedPassword) {
-                                    localStorage.setItem('playerId', existingPlayerId);
-                                    localStorage.setItem('playerName', formattedName);
-                                    setupUI();
-                                    updateHighScoreDisplays();
-                                } else {
-                                    showCustomAlert('Senha incorreta!');
-                                }
-                            } else {
-                                const newPlayerRef = scoresRef.push();
-                                newPlayerRef.set({
-                                    name: formattedName,
-                                    password: hashedPassword,
-                                    score: 0
-                                });
-                                localStorage.setItem('playerId', newPlayerRef.key);
+                    scoresRef.orderByChild('name').equalTo(formattedName).once('value', snapshot => {
+                        if (snapshot.exists()) {
+                            const playerData = snapshot.val();
+                            const existingPlayerId = Object.keys(playerData)[0];
+                            const existingPlayer = playerData[existingPlayerId];
+
+                            if (existingPlayer.password === hashedPassword) {
+                                localStorage.setItem('playerId', existingPlayerId);
                                 localStorage.setItem('playerName', formattedName);
+                                isAdmin = false;
                                 setupUI();
                                 updateHighScoreDisplays();
+                                setupPresence();
+                            } else {
+                                showCustomAlert('Senha incorreta para este usuário!');
                             }
-                        });
-                    } catch (e) {
-                        console.error("Erro no login:", e);
-                        showCustomAlert('Erro no servidor. Tente novamente.');
-                    }
+                        } else {
+                            const newPlayerRef = scoresRef.push();
+                            newPlayerRef.set({
+                                name: formattedName,
+                                password: hashedPassword,
+                                score: 0
+                            });
+                            localStorage.setItem('playerId', newPlayerRef.key);
+                            localStorage.setItem('playerName', formattedName);
+                            isAdmin = false;
+                            setupUI();
+                            updateHighScoreDisplays();
+                            setupPresence();
+                        }
+                    });
                 });
-
+                
                 changeUserButton.addEventListener('click', () => {
+                    const currentPId = localStorage.getItem('playerId');
+                    if(currentPId) {
+                        database.ref('/status/' + currentPId).remove(); // Fica offline ao deslogar
+                    }
                     localStorage.removeItem('playerName');
                     localStorage.removeItem('playerId');
                     playerName = null;
                     playerId = null;
                     playerPasswordInput.value = "";
+                    isAdmin = false;
                     setupUI();
                     updateHighScoreDisplays();
+                });
+
+                adminPanelButton.addEventListener('click', () => {
+                    allPlayersList.innerHTML = '<li>Carregando...</li>';
+                    adminPanel.classList.remove('hidden');
+                    // Ouve em tempo real
+                    statusRef.on('value', (snapshot) => {
+                        allPlayersList.innerHTML = '';
+                        if (snapshot.exists()) {
+                            let onlineCount = 0;
+                            snapshot.forEach((childSnapshot) => {
+                                const player = childSnapshot.val();
+                                if(player.online) {
+                                    const li = document.createElement('li');
+                                    li.textContent = `${player.name}`;
+                                    allPlayersList.appendChild(li);
+                                    onlineCount++;
+                                }
+                            });
+                            if (onlineCount === 0) {
+                                allPlayersList.innerHTML = '<li>Nenhum jogador online.</li>';
+                            }
+                        } else {
+                            allPlayersList.innerHTML = '<li>Nenhum jogador online.</li>';
+                        }
+                    });
+                });
+
+                closeAdminPanelButton.addEventListener('click', () => {
+                    statusRef.off(); // Para de ouvir para economizar recursos
+                    adminPanel.classList.add('hidden');
                 });
 
                 playerNameInput.addEventListener('keypress', (event) => {
@@ -836,6 +1190,7 @@
 
                 updateHighScoreDisplays();
                 initializeBackgroundAnimation();
+                setupPresence(); // Tenta marcar como online ao carregar a página
             }, 100);
         });
 
