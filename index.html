@@ -329,7 +329,6 @@
                     <button id="adminPanelButton" class="game-button secondary" style="display: none;">Jogadores Online</button>
                     <button id="changeUserButton" class="game-button secondary">Trocar de Usuário</button>
                 </div>
-                <!-- ATUALIZADO: Adicionado ID para controlar visibilidade -->
                 <p class="signature" id="signature">Criado por YoriDPA</p>
 
                 <a href="https://wa.me/5527996162221" target="_blank" class="whatsapp-link" id="whatsappLink">
@@ -1008,7 +1007,6 @@
             });
         }
 
-        // ATUALIZADO: Lógica para mostrar/esconder assinatura e WhatsApp
         function setupUI() {
             playerName = localStorage.getItem('playerName');
             playerId = localStorage.getItem('playerId');
@@ -1096,33 +1094,32 @@
                     const formattedName = formatPlayerName(rawName);
                     const hashedPassword = hashPassword(password);
 
-                    if (formattedName === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
-                        isAdmin = true;
-                        localStorage.setItem('playerId', 'ADMIN_ID');
-                        localStorage.setItem('playerName', formattedName);
-                        setupUI();
-                        updateHighScoreDisplays();
-                        setupPresence();
-                        return;
-                    }
-
                     scoresRef.orderByChild('name').equalTo(formattedName).once('value', snapshot => {
                         if (snapshot.exists()) {
                             const playerData = snapshot.val();
                             const existingPlayerId = Object.keys(playerData)[0];
                             const existingPlayer = playerData[existingPlayerId];
-
-                            if (existingPlayer.password === hashedPassword) {
-                                localStorage.setItem('playerId', existingPlayerId);
-                                localStorage.setItem('playerName', formattedName);
-                                isAdmin = false;
-                                setupUI();
-                                updateHighScoreDisplays();
-                                setupPresence();
-                            } else {
+                            
+                            // Lógica de Login para Admin e usuários normais
+                            if (formattedName === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+                                isAdmin = true;
+                            } else if (existingPlayer.password !== hashedPassword) {
                                 showCustomAlert('Senha incorreta para este usuário!');
+                                return;
                             }
+                            
+                            localStorage.setItem('playerId', existingPlayerId);
+                            localStorage.setItem('playerName', formattedName);
+                            setupUI();
+                            updateHighScoreDisplays();
+                            setupPresence();
+
                         } else {
+                            // Registro de novo usuário (Admin não pode ser registrado)
+                            if (formattedName === ADMIN_USERNAME) {
+                                showCustomAlert('Nome de usuário inválido.');
+                                return;
+                            }
                             const newPlayerRef = scoresRef.push();
                             newPlayerRef.set({
                                 name: formattedName,
