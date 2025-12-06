@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Meu Estabelecimento</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel para traduzir JSX no navegador -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <meta name="theme-color" content="#ea580c">
+  <meta name="description" content="Peça sua comida favorita online!">
+  <link rel="manifest" href="manifest.json">
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#ea580c',
+            primaryHover: '#c2410c',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    /* Animações simples */
+    @keyframes slideUp { from { transform: translateY(100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
+  </style>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased pb-24">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
+
+    // --- Ícones (SVG direto para evitar dependências externas falhando) ---
+    const Icons = {
+      UtensilsCrossed: ({size=24, className=""}) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m16 2-2.3 2.3a3 3 0 0 0 0 4.2l1.8 1.8a3 3 0 0 0 4.2 0L22 8"/><path d="M15 15 3.3 3.3a4.2 4.2 0 0 0 0 6l7.3 7.3c.7.7 2 .7 2.8 0L15 15Zm0 0 7 7"/><path d="m2.1 21.8 6.4-6.3"/><path d="m19 5-7 7"/></svg>
+      ),
+      Plus: ({size=24, className=""}) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+      ),
+      ShoppingBag: ({size=24, className=""}) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+      ),
+      X: ({size=24, className=""}) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      ),
+      Trash2: ({size=24, className=""}) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+      ),
+      Minus: ({size=24, className=""}) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M5 12h14"/></svg>
+      ),
+      MessageSquare: ({size=24, className=""}) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      )
+    };
+
+    // --- Dados do Menu ---
+    const MENU_DATA = [
+      {
+        categoria: "Pizzas",
+        itens: [
+          { id: "p1", nome: "Margherita", descricao: "Molho, mussarela, tomate fresco e manjericão", preco: 30.00 },
+          { id: "p2", nome: "Calabresa", descricao: "Calabresa fatiada, cebola e mussarela", preco: 35.00 },
+          { id: "p3", nome: "Quatro Queijos", descricao: "Mussarela, provolone, parmesão e gorgonzola", preco: 38.00 },
+          { id: "p4", nome: "Frango com Catupiry", descricao: "Frango desfiado temperado com catupiry original", preco: 36.00 }
+        ]
+      },
+      {
+        categoria: "Bebidas",
+        itens: [
+          { id: "b1", nome: "Coca-Cola", descricao: "Lata 350ml", preco: 5.00 },
+          { id: "b2", nome: "Guaraná Antarctica", descricao: "Lata 350ml", preco: 5.00 },
+          { id: "b3", nome: "Água Mineral", descricao: "Garrafa 500ml sem gás", preco: 3.00 },
+          { id: "b4", nome: "Suco de Laranja", descricao: "Natural 300ml", preco: 8.00 }
+        ]
+      },
+      {
+        categoria: "Sobremesas",
+        itens: [
+          { id: "s1", nome: "Pudim de Leite", descricao: "Fatia generosa de pudim caseiro", preco: 12.00 },
+          { id: "s2", nome: "Mousse de Chocolate", descricao: "Cremoso com raspas de chocolate", preco: 10.00 }
+        ]
+      }
+    ];
+
+    // --- Componentes ---
+
+    const Header = () => (
+      <header className="sticky top-0 z-30 bg-primary text-white shadow-lg">
+        <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="bg-white/20 p-2 rounded-full">
+              <Icons.UtensilsCrossed size={24} />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold leading-tight">Meu Estabelecimento</h1>
+              <p className="text-xs text-orange-100 font-medium">Faça seu pedido agora!</p>
+            </div>
+          </div>
+        </div>
+      </header>
+    );
+
+    const ProductItem = ({ item, onAdd }) => (
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-start gap-4 transition-transform active:scale-[0.99]">
+        <div className="flex-1">
+          <h3 className="font-bold text-gray-800 text-lg mb-1">{item.nome}</h3>
+          <p className="text-gray-500 text-sm mb-3 leading-relaxed line-clamp-2">{item.descricao}</p>
+          <span className="font-semibold text-primary block">
+            R$ {item.preco.toFixed(2).replace('.', ',')}
+          </span>
+        </div>
+        <button 
+          onClick={() => onAdd(item)}
+          className="bg-gray-100 text-primary hover:bg-primary hover:text-white p-3 rounded-full transition-colors duration-200 flex-shrink-0"
+          aria-label={`Adicionar ${item.nome} ao carrinho`}
+        >
+          <Icons.Plus size={20} />
+        </button>
+      </div>
+    );
+
+    const CartSummary = ({ count, total, onOpen }) => {
+      if (count === 0) return null;
+      return (
+        <div className="fixed bottom-0 left-0 w-full p-4 z-40 bg-gradient-to-t from-white via-white to-transparent pt-8">
+          <button 
+            onClick={onOpen}
+            className="w-full max-w-3xl mx-auto bg-primary text-white p-4 rounded-xl shadow-xl flex items-center justify-between hover:bg-primaryHover transition-colors animate-slide-up"
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-lg relative">
+                <Icons.ShoppingBag size={20} />
+                <span className="absolute -top-2 -right-2 bg-white text-primary text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-sm">
+                  {count}
+                </span>
+              </div>
+              <span className="font-medium text-sm">Ver Carrinho</span>
+            </div>
+            <span className="font-bold text-lg">
+              R$ {total.toFixed(2).replace('.', ',')}
+            </span>
+          </button>
+        </div>
+      );
+    };
+
+    const CheckoutModal = ({ isOpen, onClose, cart, total, onAdd, onRemove, onDelete, onClear }) => {
+      const [step, setStep] = useState('cart');
+      const [customer, setCustomer] = useState({ nome: '', telefone: '', endereco: '', observacoes: '' });
+
+      if (!isOpen) return null;
+
+      const handleSendOrder = (e) => {
+        e.preventDefault();
+        let message = `*Novo Pedido - Meu Estabelecimento*\n\n`;
+        message += `*Cliente:* ${customer.nome}\n`;
+        message += `*Telefone:* ${customer.telefone}\n`;
+        message += `*Endereço:* ${customer.endereco}\n`;
+        if (customer.observacoes) message += `*Obs:* ${customer.observacoes}\n`;
+        
+        message += `\n*Itens do Pedido:*\n`;
+        cart.forEach(item => {
+          message += `${item.quantity}x ${item.nome} - R$ ${(item.preco * item.quantity).toFixed(2)}\n`;
+        });
+        message += `\n*TOTAL: R$ ${total.toFixed(2)}*`;
+
+        const encodedMessage = encodeURIComponent(message);
+        window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+        onClear();
+        setStep('cart');
+        onClose();
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4">
+          <div className="bg-white w-full max-w-lg h-[90vh] sm:h-auto sm:max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-slide-up">
+            <div className="flex items-center justify-between p-4 border-b">
+              <h2 className="text-xl font-bold text-gray-800">{step === 'cart' ? 'Seu Carrinho' : 'Finalizar Pedido'}</h2>
+              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-500">
+                <Icons.X size={24} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {cart.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <p>Seu carrinho está vazio.</p>
+                  <button onClick={onClose} className="mt-4 text-primary font-semibold hover:underline">Voltar ao menu</button>
+                </div>
+              ) : (
+                <>
+                  {step === 'cart' ? (
+                    <div className="space-y-4">
+                      {cart.map(item => (
+                        <div key={item.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{item.nome}</h4>
+                            <p className="text-sm text-primary font-semibold">R$ {(item.preco * item.quantity).toFixed(2).replace('.', ',')}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center bg-white rounded-lg border border-gray-200 shadow-sm">
+                              <button onClick={() => onRemove(item.id)} className="p-2 text-primary hover:bg-orange-50 rounded-l-lg"><Icons.Minus size={16} /></button>
+                              <span className="w-8 text-center font-medium text-gray-700">{item.quantity}</span>
+                              <button onClick={() => onAdd(item)} className="p-2 text-primary hover:bg-orange-50 rounded-r-lg"><Icons.Plus size={16} /></button>
+                            </div>
+                            <button onClick={() => onDelete(item.id)} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><Icons.Trash2 size={20} /></button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <form id="checkout-form" onSubmit={handleSendOrder} className="space-y-4">
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Nome</label><input required className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" value={customer.nome} onChange={e => setCustomer({...customer, nome: e.target.value})} placeholder="Seu nome" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label><input required type="tel" className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" value={customer.telefone} onChange={e => setCustomer({...customer, telefone: e.target.value})} placeholder="(XX) XXXXX-XXXX" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label><input required className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" value={customer.endereco} onChange={e => setCustomer({...customer, endereco: e.target.value})} placeholder="Rua, Bairro" /></div>
+                      <div><label className="block text-sm font-medium text-gray-700 mb-1">Obs</label><textarea className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" rows={3} value={customer.observacoes} onChange={e => setCustomer({...customer, observacoes: e.target.value})} placeholder="Opcional"></textarea></div>
+                    </form>
+                  )}
+                </>
+              )}
+            </div>
+            {cart.length > 0 && (
+              <div className="p-4 border-t bg-gray-50">
+                <div className="flex justify-between items-center mb-4 text-lg font-bold text-gray-800">
+                  <span>Total</span>
+                  <span>R$ {total.toFixed(2).replace('.', ',')}</span>
+                </div>
+                {step === 'cart' ? (
+                  <button onClick={() => setStep('form')} className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl shadow-sm">Continuar</button>
+                ) : (
+                  <div className="flex gap-3">
+                    <button type="button" onClick={() => setStep('cart')} className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-4 rounded-xl">Voltar</button>
+                    <button type="submit" form="checkout-form" className="flex-[2] bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl shadow-sm flex items-center justify-center gap-2"><Icons.MessageSquare size={20} /> Enviar Pedido</button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    // --- App Principal ---
+
+    const App = () => {
+      const [cart, setCart] = useState([]);
+      const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+      const addToCart = (item) => {
+        setCart(prev => {
+          const existing = prev.find(i => i.id === item.id);
+          return existing 
+            ? prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i)
+            : [...prev, { ...item, quantity: 1 }];
+        });
+      };
+
+      const removeOneFromCart = (itemId) => {
+        setCart(prev => {
+          const existing = prev.find(i => i.id === itemId);
+          if (existing && existing.quantity > 1) {
+            return prev.map(i => i.id === itemId ? { ...i, quantity: i.quantity - 1 } : i);
+          }
+          return prev.filter(i => i.id !== itemId);
+        });
+      };
+
+      const deleteFromCart = (itemId) => setCart(prev => prev.filter(i => i.id !== itemId));
+      const clearCart = () => setCart([]);
+
+      const total = useMemo(() => cart.reduce((sum, item) => sum + (item.preco * item.quantity), 0), [cart]);
+      const count = useMemo(() => cart.reduce((sum, item) => sum + item.quantity, 0), [cart]);
+
+      return (
+        <div className="min-h-screen font-sans">
+          <Header />
+          <main className="max-w-3xl mx-auto px-4 py-6 space-y-8">
+            {MENU_DATA.map((category) => (
+              <section key={category.categoria}>
+                <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <span className="w-2 h-8 bg-primary rounded-full inline-block"></span>
+                  {category.categoria}
+                </h2>
+                <div className="grid gap-4">
+                  {category.itens.map(item => (
+                    <ProductItem key={item.id} item={item} onAdd={addToCart} />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </main>
+          <CartSummary count={count} total={total} onOpen={() => setIsCheckoutOpen(true)} />
+          <CheckoutModal 
+            isOpen={isCheckoutOpen} 
+            onClose={() => setIsCheckoutOpen(false)} 
+            cart={cart} total={total} 
+            onAdd={addToCart} onRemove={removeOneFromCart} onDelete={deleteFromCart} onClear={clearCart} 
+          />
+        </div>
+      );
+    };
+
+    // Renderização
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>

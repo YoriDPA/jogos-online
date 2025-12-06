@@ -1,0 +1,15 @@
+{
+  "name": "Meu Estabelecimento",
+  "short_name": "Restaurante",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ea580c",
+  "theme_color": "#ea580c",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/3081/3081840.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
