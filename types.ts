@@ -20,3 +20,14 @@ export interface CustomerData {
   endereco: string;
   observacoes: string;
 }
+
+export type OrderStatus = 'pending' | 'preparing' | 'ready' | 'completed';
+
+export interface Order {
+  id: string;
+  customer: CustomerData;
+  items: CartItem[];
+  total: number;
+  status: OrderStatus;
+  createdAt: string;
+}
