@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Meu Estabelecimento - Pedidos</title>
+  
+  <!-- PWA essencial -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#FF5722"> <!-- Cor laranja, estilo iFood -->
+
+  <!-- Ícones -->
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  
+  <style>
+    body { font-family: sans-serif; margin: 0; background: #f5f5f5; color: #333; }
+    header { background: #FF5722; color: white; padding: 15px; text-align: center; position: fixed; width: 100%; top: 0; z-index: 10; }
+    main { padding: 70px 10px 60px; }
+    .categoria { margin-bottom: 20px; }
+    .categoria h2 { font-size: 1.2em; color: #FF5722; }
+    .item { display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    .item-info { flex: 1; }
+    .item h3 { margin: 0; font-size: 1em; }
+    .item p { margin: 5px 0 0; color: #666; font-size: 0.9em; }
+    .add-btn { background: #FF5722; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+    #carrinho { position: fixed; bottom: 0; width: 100%; background: white; padding: 10px; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); display: none; }
+    #carrinho h2 { margin: 0; font-size: 1em; }
+    #itens-carrinho { max-height: 200px; overflow-y: auto; }
+    #total { font-weight: bold; }
+    #finalizar { background: #4CAF50; color: white; border: none; padding: 10px; width: 100%; border-radius: 5px; cursor: pointer; }
+    form { margin-top: 10px; display: none; } /* Form de pedido */
+    input, textarea { width: 100%; margin-bottom: 10px; padding: 8px; border: 1px solid #ddd; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Meu Estabelecimento</h1>
+    <p>Faça seu pedido agora!</p>
+  </header>
+  
+  <main id="menu">
+    <!-- Menu será carregado aqui via JS -->
+  </main>
+  
+  <div id="carrinho">
+    <h2>Carrinho</h2>
+    <div id="itens-carrinho"></div>
+    <p id="total">Total: R$ 0,00</p>
+    <button id="finalizar">Finalizar Pedido</button>
+    <form id="form-pedido">
+      <input type="text" id="nome" placeholder="Seu nome" required>
+      <input type="tel" id="telefone" placeholder="Telefone" required>
+      <input type="text" id="endereco" placeholder="Endereço de entrega" required>
+      <textarea id="observacoes" placeholder="Observações"></textarea>
+      <button type="submit">Enviar Pedido</button>
+    </form>
+  </div>
+
+  <script src="menu.js"></script>
+  <script src="carrinho.js"></script>
+  
+  <!-- Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js');
+      });
+    }
+  </script>
+</body>
+</html>
